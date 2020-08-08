@@ -1,0 +1,48 @@
+---
+full: false
+# args:
+#   - "--rsync-options="--bwlimit=4096""
+#   - "--allow-source-mismatch"
+
+log:
+  dir: /dev
+  file: stdout
+
+# gpg:
+  # public: SOMEKEY123GOES123HERE
+
+source:
+  # /baseDir/directory
+  # eg, if baseDir is "/mnt/mydata" and directories has "Documents",
+  # the source directory to backup would be: /mnt/mydata/Documents
+  baseDir: /mnt/mydata
+
+dest:
+  uri: "rsync://root@someserver:22/" # this overrides proto/user/host/port *for duplicity only*
+  proto: rsync
+  user: root
+  host: somehost
+  port: 22
+  # /baseDir/directory
+  # eg, if baseDir is "/mnt/backup/mydata" and directories has "Documents",
+  # the destination directory of the backup would be: /mnt/backup/mydata/Documents
+  baseDir: /mnt/backup/mydata
+
+# /baseDir/directory
+# See notes above within the 'dest' section.
+directories:
+  # Here are some examples:
+  - Code
+  - Documents/ebooks # example of sub-directory
+  - Documents/taxes # example of sub-directory
+  - Movies
+  - Music
+  - Pictures
+  - "Shows/Ergo Proxy" # example with space
+  - "Shows/My Hero Academia" # example with space
+
+  # Forward-slashes ("/") are treated like paths.
+  # This means you can, for example, backup only a subdirectory.
+  # The parent directory structure will be created in
+  # case you add subdirectories of the same parent structure later.
+  # - path/to/some/subfolder
