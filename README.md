@@ -27,13 +27,13 @@ Here's a "loose" guide on how to set up your system:
 
 3. run docker container:
 	```sh
-	docker pull intrand/duplicity:latest && docker run -ti --rm --name duplicity --hostname duplicity \
+	docker pull intrand/duplicity-backup:latest && docker run -ti --rm --name duplicity --hostname duplicity \
 	--mount source="${HOME}/.cache/duplicity",destination="/home/duplicity/.cache/duplicity",type=bind \
 	--mount source="${HOME}/.gnupg",destination="/home/duplicity/.gnupg",type=bind \
 	--mount source="${HOME}/backup.yml",destination="/opt/backup.yml",type=bind \
 	--mount source="${HOME}/.ssh",destination="/home/duplicity/.ssh",type=bind \
 	--mount source="/mnt/mydata",destination="/mnt/mydata",type=bind \
-	intrand/duplicity:latest --args='--rsync-options="--bwlimit=4096"'
+	intrand/duplicity-backup:latest --args='--rsync-options="--bwlimit=4096"'
 	```
 
 4. schedule with crontab/cronjob/kubernetes:
@@ -48,9 +48,9 @@ Here's a "loose" guide on how to set up your system:
 	```sh
 	# contents of ~/backup.sh:
 	#!/bin/sh
-	docker pull intrand/duplicity:latest && docker run -ti --rm --name duplicity --hostname duplicity \
+	docker pull intrand/duplicity-backup:latest && docker run -ti --rm --name duplicity --hostname duplicity \
 	--mount <blah blah blah> \
-	intrand/duplicity:latest --args='--rsync-options="--bwlimit=4096"' ${@};
+	intrand/duplicity-backup:latest --args='--rsync-options="--bwlimit=4096"' ${@};
 	exit ${?};
 	```
 
