@@ -25,16 +25,16 @@ spec:
           restartPolicy: Never
           containers:
             - name: duplicity
-              image: intrand/duplicity-backup:latest
+              image: ghcr.io/intrand/duplicity-backup:CHANGE_ME
               imagePullPolicy: Always
 
               resources:
                 requests:
-                  cpu: "50m"
-                  memory: "100Mi"
+                  cpu: 50m
+                  memory: 100Mi
                 limits:
-                  cpu: "2000m"
-                  memory: "500Mi"
+                  cpu: 2000m
+                  memory: 500Mi
 
               # env:
               #   - name: backup_gpg_public

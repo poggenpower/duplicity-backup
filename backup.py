@@ -255,11 +255,17 @@ for item in config["directories"]:
 	duplicity_args.append(duplicitySource)
 	duplicity_args.append(f"{config['dest']['uri']}{duplicityDest}")
 
-	sys.stderr.write(
-		"================================================================================\n"
-		f"Running: duplicity --encrypt-key {config['gpg']['public']} {duplicity_args}\n"
-		"================================================================================\n"
-	)
+	prettyArgs = ' '.join(duplicity_args)
+	out = f"Running: duplicity --encrypt-key {config['gpg']['public']} {prettyArgs}\n"
+	equals = ""
+	for i in out:
+		equals = equals + "="
+	equals = equals + "\n"
+	sys.stdout.write(
+		equals +
+		out +
+		equals
+)
 
 	duplicity = sh.duplicity.bake(encrypt_key=config["gpg"]["public"])
 	_backup = duplicity(duplicity_args)

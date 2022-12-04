@@ -1,4 +1,4 @@
-FROM registry.intrand.io/base/python:2021.11.19.01
+FROM docker.io/python:3
 
 COPY backup.py backup.yml /opt/app/
 
