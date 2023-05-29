@@ -16,3 +16,7 @@ jobs:
     - uses: actions/checkout@v3
     - name: Build the Docker image
       run: docker build . --file Dockerfile --tag duplicity-backup:$(date +%s)
+
+  call-push:
+    needs: build
+    uses: ./.github/workflows/docker-oush.yml
