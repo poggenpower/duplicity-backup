@@ -1,13 +1,14 @@
 FROM docker.io/python:3-alpine
 
-COPY backup.py backup.yml /opt/app/
+COPY backup.py backup.yml requirements.txt /opt/app/
 
 RUN apk fix && \
 	apk add --no-cache \
 		ca-certificates \
 		duplicity \
 		openssh \
-		rsync 
+		rsync &&\
+	pip install -r /opt/app/requirements.txt
 RUN	addgroup -S app &&\
 	adduser -S app -G app &&\
 	mkdir -p \
