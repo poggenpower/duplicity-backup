@@ -1,4 +1,4 @@
-FROM docker.io/python:3
+FROM docker.io/python:3-alpine
 
 COPY backup.py backup.yml /opt/app/
 
@@ -7,7 +7,9 @@ RUN apk fix && \
 		ca-certificates \
 		duplicity \
 		openssh \
-		rsync && \
+		rsync 
+RUN	addgroup -S app &&\
+	adduser -S app -G app &&\
 	mkdir -p \
 		~app/.cache/duplicity \
 		~app/.gnupg && \
