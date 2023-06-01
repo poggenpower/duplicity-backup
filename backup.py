@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import sys, os, argparse, pathlib, yaml, sh
 
+SSH_BASED_PROTOS = ['ssh', 'rsync']
+
 def usage():
 	sys.stderr.write(
 	"\n"
@@ -237,12 +239,15 @@ for item in config["directories"]:
 		sys.stderr.write(f"Couldn't find source {duplicitySource}. Skipping.\n")
 		continue
 
-	ssh = sh.ssh.bake(p=config["dest"]["port"], l=config["dest"]["user"])
-	try:
-		ssh("-o", "UpdateHostKeys=yes", "-o", "StrictHostKeyChecking=accept-new", config["dest"]["host"], "mkdir", "-p", f"{duplicityDest}")
-	except Exception as e:
-		sys.stderr.write(f"You must setup and test SSH ahead of time. See below for errors:\n{e}\n")
-		sys.exit(1)
+	# Run some preps if SSH based connection
+	proto = config["dest"]["uri"].partition(":")[0] 
+	if proto in SSH_BASED_PROTOS:
+		ssh = sh.ssh.bake(p=config["dest"]["port"], l=config["dest"]["user"])
+		try:
+			ssh("-o", "UpdateHostKeys=yes", "-o", "StrictHostKeyChecking=accept-new", config["dest"]["host"], "mkdir", "-p", f"{duplicityDest}")
+		except Exception as e:
+			sys.stderr.write(f"You must setup and test SSH ahead of time. See below for errors:\n{e}\n")
+			sys.exit(1)
 
 	duplicity_args = []
 	if config["full"]:
