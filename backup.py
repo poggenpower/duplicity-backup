@@ -46,6 +46,8 @@ def usage():
 	"\t\t\tchange other `dest` values.\n"
 	"--directories\t\tSpace-separated list of\n"
 	"\t\t\tdirectories to backup.\n"
+	"--all-subdirectories\t\tall 1st level subdirectories of `--source-basedir`\n"
+ 	"\t\t\tget separatly backuped. `--directories` are ignored"
 	"\n"
 	"================================================================\n"
 	"These fields are valid inside a backup.yml config file:\n"
@@ -62,7 +64,8 @@ def usage():
 def getDefaults():
 	return {
 		"gpg": {
-			"public": ""
+			"public": "",
+			"public_key_pem": ""
 		},
 		"log": {
 			"dir": "/var/log",
@@ -86,6 +89,7 @@ def getDefaults():
 			"Music",
 			"Pictures"
 		],
+		"all_subdirectories": False,
 		"full": False,
 		"args": [],
 		"config": "/opt/backup.yml"
@@ -94,7 +98,8 @@ def getDefaults():
 def getEnv():
 	return {
 		"gpg": {
-			"public": str(os.environ.get("backup_gpg_public", ""))
+			"fingerprint": str(os.environ.get("backup_gpg_fingerprint", "")),
+			"public_key_pem": str(os.environ.get("backup_gpg_publickeypem", ""))
 		},
 		"log": {
 			"dir": str(os.environ.get("backup_log_dir", "")),
@@ -112,6 +117,7 @@ def getEnv():
 			"uri": str(os.environ.get("backup_dest_uri", ""))
 		},
 		"directories": strToList(os.environ.get("backup_directories", ""), splitter=","),
+		"all_subdirectories": bool(os.environ.get("all_subdirectories", False)), 
 		"full": bool(os.environ.get("backup_full", False)), # too lazy to get around not setting a default here
 		"args": strToList(os.environ.get("backup_args", ""), splitter=" "),
 		"config": ""
@@ -125,7 +131,8 @@ def getArgs():
 	parser.add_argument("--config", type=str, required=False, default="", help="(Default: /opt/backup.yml) Config file location.")
 
 	# optional overrides
-	parser.add_argument("--gpg-public", type=str, required=False, default="", help="GPG key used to encrypt/sign backups.")
+	parser.add_argument("--gpg-fingerprint", type=str, required=False, default="", help="Fingerprint of GPG key used to encrypt/sign backups.")
+	parser.add_argument("--gpg-public-key-pem", type=str, required=False, default="", help="Public key file in pem format.")
 	parser.add_argument("--log-dir", type=str, required=False, default="", help="Directory containing logs.")
 	parser.add_argument("--log-file", type=str, required=False, default="", help="Name of log file.")
 	parser.add_argument("--source-basedir", type=str, required=False, default="", help="Base/root directory on the source filesystem. --directories are inside of this location.")
@@ -136,12 +143,13 @@ def getArgs():
 	parser.add_argument("--dest-port", type=int, required=False, default=-1, help="Port on the destination host to connect on.")
 	parser.add_argument("--dest-uri", type=str, required=False, default="", help="Override *connection* URI. Does not change other `dest` values.")
 	parser.add_argument("--directories", type=str, required=False, default="", help="Space-separated list of directories to backup.")
+	parser.add_argument("--all-subdirectories", action="store_true", required=False, default=False, help="all 1st level subdirectories of `source-basedir` get separatly backuped. `directories are ignored`")
 
 	args = parser.parse_args()
 
-	return {
+	args_config = {
 		"gpg": {
-			"public": args.gpg_public
+			"public": args.gpg_fingerprint
 		},
 		"log": {
 			"dir": args.log_dir,
@@ -162,6 +170,16 @@ def getArgs():
 		"args": strToList(args.args, splitter=" "),
 		"config": args.config
 	}
+	if args.all_subdirectories:
+		args_config["all_subdirectories"] = args.all_subdirectories
+	if len(args.gpg_public_key_pem) > 0:
+		try:
+			args_config["gpg"]["public_key_pem"] = open(args.gpg_public_key_pem).read()
+		except FileNotFoundError:
+			print(f"public key file: {args.gpg_public_key_pem} not found, ignoreing")
+			args_config["gpg"]["public_key_pem"] = ""
+
+	return args_config
 
 def getConfigFile(file):
 	if not pathlib.Path(file).exists():
@@ -211,10 +229,34 @@ if not args["config"] == "": # we need to read args early to see which config to
 config = merge(getConfigFile(config['config']), config) # overlay config file
 config = merge(args, config) # overlay args
 
-if config["gpg"]["public"] == "":
+if config["gpg"].get("fingerprint","") == "":
 	usage()
 	sys.stderr.write("You MUST set `gpg.public` to a valid GPG public key. Use gpg --list-keys to see what's available.\n")
 	sys.exit(1)
+else:
+	if not config["gpg"]["fingerprint"] in sh.gpg("--list-keys", "--with-colons", "--with-fingerprint", config["gpg"]["fingerprint"]):
+		print(f'No key found with fingerprint {config["gpg"]["fingerprint"]}, try import')
+		if len(config["gpg"]["public_key_pem"]) > 0:
+			try:
+				sh.gpg("--import", _in=config["gpg"]["public_key_pem"])
+				sh.gpg("--import-ownertrust", _in=f'{config["gpg"]["fingerprint"]}:6:\n')
+				if not config["gpg"]["fingerprint"] in sh.gpg("--list-keys"):
+					sys.stderr.write(f'Wrong key was imported, check fingerprint.\n')
+					print(sh.gpg("--list-keys"))
+					print(sh.gpg("--export-ownertrust"))
+					sys.exit(1)
+				print("Public Key import successful.")
+			except sh.ErrorReturnCode as sh_err:
+				sys.stderr.write(f"""Can't import and trust public key: 
+                     Command: {sh_err.full_cmd}
+                     StdOut: {sh_err.stdout}
+                     StrErr: {sh_err.stderr}\n""")
+				sys.exit(1)
+		else:
+			sys.stderr.write(f'No public key to import set "gpg.public_key_pem". Abort.\n')
+			sys.exit(1)
+
+
 
 if not pathlib.Path(config["log"]["dir"]).exists():
 	usage()
@@ -226,14 +268,21 @@ logDir = f"{config['log']['dir']}/{config['log']['file']}"
 if config["dest"]["uri"] == "":
 	config["dest"]["uri"] = f"{config['dest']['proto']}:/{config['dest']['user']}@{config['dest']['host']}:{config['dest']['port']}/"
 
+if config["all_subdirectories"]:
+	# replacing directories with all subdirectories of source base dir
+	rootdir = f"{config['source']['baseDir']}"
+	if pathlib.Path(rootdir):
+		subdirs = [x.name for x in os.scandir(rootdir) if x.is_dir() and not x.name.startswith(('.', '@'))]
+		config["directories"] = subdirs
+
 if len(config["directories"]) <= 0:
 	usage()
 	sys.stdout.write("Nothing to do.\n")
 	sys.exit(0)
 
 for item in config["directories"]:
-	duplicitySource = f"{config['source']['baseDir']}/{item}"
-	duplicityDest = f"{config['dest']['baseDir']}/{item}"
+	duplicitySource = os.path.join(config['source']['baseDir'], item)
+	duplicityDest = os.path.join(config['dest']['baseDir'], item)
 
 	if not pathlib.Path(duplicitySource):
 		sys.stderr.write(f"Couldn't find source {duplicitySource}. Skipping.\n")
@@ -261,7 +310,7 @@ for item in config["directories"]:
 	duplicity_args.append(f"{config['dest']['uri']}{duplicityDest}")
 
 	prettyArgs = ' '.join(duplicity_args)
-	out = f"Running: duplicity --encrypt-key {config['gpg']['public']} {prettyArgs}\n"
+	out = f"Running: duplicity --encrypt-key {config['gpg']['fingerprint']} {prettyArgs}\n"
 	equals = ""
 	for i in out:
 		equals = equals + "="
@@ -272,6 +321,6 @@ for item in config["directories"]:
 		equals
 )
 
-	duplicity = sh.duplicity.bake(encrypt_key=config["gpg"]["public"])
+	duplicity = sh.duplicity.bake(encrypt_key=config["gpg"]["fingerprint"])
 	_backup = duplicity(duplicity_args)
 	sys.stdout.write(f"{_backup}\n")
