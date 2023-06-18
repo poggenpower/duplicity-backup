@@ -231,10 +231,18 @@ config = merge(args, config) # overlay args
 
 if config["gpg"].get("fingerprint","") == "":
 	usage()
-	sys.stderr.write("You MUST set `gpg.public` to a valid GPG public key. Use gpg --list-keys to see what's available.\n")
+	sys.stderr.write("You MUST set `gpg.fingerprint` to a valid GPG public key. Use gpg --list-keys to see what's available.\n")
 	sys.exit(1)
 else:
-	if not config["gpg"]["fingerprint"] in sh.gpg("--list-keys", "--with-colons", "--with-fingerprint", config["gpg"]["fingerprint"]):
+	try: 
+		public_key_available = config["gpg"]["fingerprint"] in sh.gpg("--list-keys", "--with-colons", "--with-fingerprint", config["gpg"]["fingerprint"])
+	except sh.ErrorReturnCode as sh_err:
+		if b"No public key" in sh_err.stderr:
+			public_key_available = False
+		else:
+			raise sh_err
+
+	if not public_key_available:
 		print(f'No key found with fingerprint {config["gpg"]["fingerprint"]}, try import')
 		if len(config["gpg"]["public_key_pem"]) > 0:
 			try:
