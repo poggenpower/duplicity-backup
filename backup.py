@@ -26,7 +26,8 @@ def usage():
 	"\t\t\tlocation.\n"
 	"\n"
 	"These command-line arguments override other forms of config:\n"
-	"--gpg-public\t\tGPG key used to encrypt/sign backups.\n"
+	"--gpg-fingerprint\t\tGPG key used to encrypt/sign backups.\n"
+	"--pgp-public_key_pem\t\tfilename of a PEM file containing the public key"
 	"--log-dir\t\tDirectory containing logs.\n"
 	"--log-file\t\tName of log file.\n"
 	"--source-basedir\tBase/root directory on the source\n"
@@ -64,7 +65,7 @@ def usage():
 def getDefaults():
 	return {
 		"gpg": {
-			"public": "",
+			"fingerprint": "",
 			"public_key_pem": ""
 		},
 		"log": {
