@@ -13,7 +13,7 @@ class ConfigParser():
     def __init__(self):
         parser = ArgumentParser(default_config_files=['/opt/backup.yml'], env_prefix="DUPBACK", default_env=True)
 
-        parser.add_argument("--command", required=False, choices=[
+        parser.add_argument("--command", required=False, default="", choices=[
                 'full', 'verify', 'collection-status', 'list-current-files', 
                 'restore', 'remove-older-than', 'remove-all-but-n-full',
                 'cleanup', 'replicate'
@@ -176,10 +176,10 @@ for item in config.directories:
     skip_dest = skip_source = False
     if "full" == config.command:
         duplicity_args.append(config.command)
-    elif "restore" == config.command:
+    elif "restore" == config.command or "verify" in config.command:
         duplicityDest, duplicitySource = duplicitySource, duplicityDest
         duplicity_args.append(config.command)
-    elif "remove" in config.command or "cleanup" in config.command or "list-current-files" in config.command:
+    elif any([x in config.command for x in ["collection-status", "remove", "cleanup", "list-current-files"]]):
         skip_source = True
         duplicity_args.append(config.command)
     if config.args:
