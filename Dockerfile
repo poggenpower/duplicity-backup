@@ -9,6 +9,13 @@ RUN apk fix && \
 		openssh \
 		rsync &&\
 	pip install -r /opt/app/requirements.txt
+# install dev version of duplicity change URL or comment out
+RUN pip install setuptools_scm boto3 python-gettext &&\
+	apk add gettext &&\
+	apk add -t .build-deps gcc musl-dev librsync-dev git &&\
+	pip install git+https://gitlab.com/duplicity/duplicity.git@2f0ce69f4b089f6b819d283a87a76616b9ca0d25 &&\
+	apk del --purge .build-deps
+
 RUN	addgroup -S app &&\
 	adduser -S app -G app &&\
 	mkdir -p \

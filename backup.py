@@ -203,5 +203,5 @@ for item in config.directories:
     )
 
     duplicity = sh.duplicity.bake(encrypt_key=config.gpg.fingerprint)
-    _backup = duplicity(duplicity_args)
-    sys.stdout.write(f"{_backup}\n")
+    for line in duplicity(duplicity_args, _iter=True):
+        print(line, end="")
