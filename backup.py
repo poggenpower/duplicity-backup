@@ -108,7 +108,8 @@ else:
             if b"No secret key" in sh_err.stderr:
                 private_key_imported = False
             else:
-                raise sh_err
+                # raise sh_err
+                private_key_imported = False
 
         if not private_key_imported:
             try:
@@ -202,6 +203,10 @@ for item in config.directories:
         equals
     )
 
-    duplicity = sh.duplicity.bake(encrypt_key=config.gpg.fingerprint)
-    for line in duplicity(duplicity_args, _iter=True):
-        print(line, end="")
+    try:
+        duplicity = sh.duplicity.bake(encrypt_key=config.gpg.fingerprint)
+        for line in duplicity(duplicity_args, _iter=True):
+            print(line, end="")
+    except  sh.ErrorReturnCode as sh_err:
+        print(f"ERROR exitcode: {sh_err.stderr.decode()}")
+        raise sh_err
