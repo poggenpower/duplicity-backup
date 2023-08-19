@@ -1,0 +1,58 @@
+---
+full: false
+args:
+  - "--s3-use-glacier"
+  - "--allow-source-mismatch"
+  - --exclude-older-than 
+  - '2018-10-27'
+  - --exclude 
+  - '**/*.$.jpg'
+  - --exclude
+  - '**/.@__thumb'
+  - --exclude
+  - '**/.dtrash'
+  - --exclude
+  - '**/.streams'
+  - --exclude
+  - '**/.DS_Store'
+  - --exclude
+  - '**/@Recycle'
+  - --verbosity
+  - i
+  # - --dry-run
+
+log:
+  dir: /dev
+  file: stdout
+
+gpg:
+  public: 1FC7A49EF417B70D
+
+source:
+  # /baseDir/directory
+  # eg, if baseDir is "/mnt/mydata" and directories has "Documents",
+  # the source directory to backup would be: /mnt/mydata/Documents
+  baseDir: /mnt/mydata
+
+dest:
+  uri: "s3:///duplicity-photo" # this overrides proto/user/host/port *for duplicity only*
+  proto: rsync
+  user: root
+  host: somehost
+  port: 22
+  # /baseDir/directory
+  # eg, if baseDir is "/mnt/backup/mydata" and directories has "Documents",
+  # the destination directory of the backup would be: /mnt/backup/mydata/Documents
+  baseDir: /test2
+
+# /baseDir/directory
+# See notes above within the 'dest' section.
+directories:
+  # Here are some examples:
+  - 2018/12/26
+
+  # Forward-slashes ("/") are treated like paths.
+  # This means you can, for example, backup only a subdirectory.
+  # The parent directory structure will be created in
+  # case you add subdirectories of the same parent structure later.
+  # - path/to/some/subfolder

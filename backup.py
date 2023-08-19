@@ -6,7 +6,7 @@ import sh
 from jsonargparse import ArgumentParser, ActionConfigFile, Namespace
 from typing import Callable, List, Tuple
 
-from result_reader import ResultReader, EmailSender
+from result_reader import ResultReader, EmailSender, DummySender
 
 import logging
 import logging.handlers
@@ -58,6 +58,7 @@ class ConfigParser:
         )
         parser.add_argument("--args", type=List[str], required=False, default=[], help="(Default None) Extra args to duplicity.",)
         parser.add_argument("--config", action=ActionConfigFile)
+        parser.add_argument("--title", type=str, required=False, default="Backup", help="Nice name if the Job.")
 
         # optional overrides
         parser.add_argument("--gpg.fingerprint", type=str, required=True, default="", help="Fingerprint of GPG key used to encrypt/sign backups.",)
@@ -80,13 +81,7 @@ class ConfigParser:
         parser.add_argument("--dest.user", type=str, required=False, help="User on the destination host to connect as.",)
         parser.add_argument("--dest.host", type=str, required=False, help="The hostname or IP of the destination host.",)
         parser.add_argument("--dest.port", type=int, required=False, help="Port on the destination host to connect on.")
-        parser.add_argument(
-            "--dest.uri",
-            type=str,
-            required=False,
-            default="",
-            help="Override *connection* URI. Does not change other `dest` values.",
-        )
+        parser.add_argument("--dest.uri", type=str, required=False, default="", help="Override *connection* URI. Does not change other `dest` values.",)
         parser.add_argument(
             "--directories",
             type=List[str],
@@ -216,8 +211,8 @@ class ConfigParser:
         return True, ""
 
 
-    def add_sublevel_arguments(self, sublevel: str, parameters: Callable):
-        self.parser.add_argument(f"--{sublevel}", type=parameters, defaults=parameters)
+    def add_sublevel_arguments(self, sublevel: str, parameters: Callable, required=False):
+        self.parser.add_argument(f"--{sublevel}", type=parameters, required=required)
         self._cfg_d = None
 
     def __call__(self) -> Namespace:
@@ -243,9 +238,13 @@ cp = ConfigParser()
 cp.add_sublevel_arguments("email", sender_params)
 try:
     config = cp()
-    email_param = EmailSender.EmailParameter(**config.email.as_dict())
-    email_sender = EmailSender(email_param)
-    rr = ResultReader(email_sender, title="Photobackup")
+    if config.email.server:
+        email_param = EmailSender.EmailParameter(**config.email.as_dict())
+        sender = EmailSender(email_param)
+    else:
+        sender = DummySender()
+    rr = ResultReader(sender, title=config.title)
+    
 except ConfigurationIssue as ci:
     cp.usage()
     logging.error(ci)

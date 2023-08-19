@@ -35,11 +35,23 @@ class Sender(ABC):
         """
         pass
 
+class DummySender(Sender):
+    """
+    NoOp Sender to "disbale" sending
+    """
+    def send(self, report_list: list[BackupStat], *args, **kwargs) -> bool:
+        return False
+    
+    def get_params(cls) -> Callable:  # type: ignore
+        @dataclass()
+        class Noargs:
+            pass
+        return Noargs
 
 class EmailSender(Sender):
     @dataclass
     class EmailParameter:
-        server: str = "mail.example.com"
+        server: str | None = None
         port: int = 587
         sender: str = "jane.doe@example.com"
         recipient: str = "jon.doe@example.com"

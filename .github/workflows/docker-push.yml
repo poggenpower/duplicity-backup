@@ -20,6 +20,7 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
   SUFFIX: ${{ github.ref == 'refs/heads/main' && '' || format('dev{0}', github.run_number) }}
+  GENERIC_TAG: ${{ github.ref == 'refs/heads/main' && 'latest' || 'dev' }}
 
 jobs:
   build-and-push-image:
@@ -53,5 +54,5 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.get-latest-tag.outputs.tag }}${{ env.SUFFIX }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.get-latest-tag.outputs.tag }}${{ env.SUFFIX }}, ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{env.GENERIC_TAG}}
           labels: ${{ steps.meta.outputs.labels }}
