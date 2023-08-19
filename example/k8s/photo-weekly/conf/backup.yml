@@ -1,0 +1,58 @@
+---
+args:
+  - "--s3-use-glacier-ir"
+  - "--allow-source-mismatch"
+  - --exclude 
+  - '**/*.$.jpg'
+  - --exclude
+  - '**/.@__thumb'
+  - --exclude
+  - '**/.dtrash'
+  - --exclude
+  - '**/.streams'
+  - --exclude
+  - '**/.DS_Store'
+  - --exclude
+  - '**/@Recycle'
+  - --jsonstat
+  # - --verbosity
+  # - i
+  # - --dry-run
+
+command: inc
+
+gpg:
+  fingerprint: C14B3DABD0E9E5DDA325312A1FC7A49EF417B70D
+  public_key_pem: |
+    -----BEGIN PGP PUBLIC KEY BLOCK-----
+    
+    mDMEZHkQ4BYJKwYBBAHaRw8BAQdAbl2mYgcRf4sySI5+TJzGzMMZUqRMXi28qRSW
+    rv3sRV20FmR1cGxpY2l0eSBwaG90byBiYWNrdXCIkwQTFgoAOwIbAwULCQgHAgIi
+    AgYVCgkICwIEFgIDAQIeBwIXgBYhBMFLPavQ6eXdoyUxKh/HpJ70F7cNBQJkeRH1
+    AAoJEB/HpJ70F7cNRlEBAIydSpuDi3+3FzyfmbQpg0ODIiwzSgAtRFGEZup2Cdac
+    AP0eCQSHoNPYb+xno9MyU0nnpPj9rikaxjtJQRIOLam/Arg4BGR5EOASCisGAQQB
+    l1UBBQEBB0DyNuF/XYvofEcq0qKP3BvvV61PCfg4c3ognsRHfAjhDgMBCAeIeAQY
+    FgoAIAIbDBYhBMFLPavQ6eXdoyUxKh/HpJ70F7cNBQJkeRGWAAoJEB/HpJ70F7cN
+    ZN8A/1PgqpImMEZpnBo3xxaQznO9HbxrS2k6re41Oss3hsJoAP9Xo+KbinXuJuqU
+    wejk1O4Gqpn1dC8+oJZLSDdzqHqEAw==
+    =lIsq
+    -----END PGP PUBLIC KEY BLOCK-----
+
+source:
+  # /baseDir/directory
+  # eg, if baseDir is "/mnt/mydata" and directories has "Documents",
+  # the source directory to backup would be: /mnt/mydata/Documents
+  baseDir: /mnt/mydata
+
+dest:
+  uri: "s3:///duplicity-photo" # this overrides proto/user/host/port *for duplicity only*
+  baseDir: /photo-weekly
+
+directories: []
+all_subdirectories: true
+
+email:
+  server: schmu.net
+  sender: backuptest@schmu.net
+  recipient: thomas@laubrock.de
+  user: smtp-auth-2020@schmu.net

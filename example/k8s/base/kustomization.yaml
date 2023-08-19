@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: duplicity-backup
+configMapGenerator:
+- name: duplicity
+  files:
+    - backup.yml=conf/backup.yml 
+
+resources:
+-  0100-cache-pvc.yaml
+-  0100-gnupg-pvc.yaml
+-  0100-ssh-pvc.yaml
+-  0400-chron.yaml

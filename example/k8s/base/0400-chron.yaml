@@ -1,0 +1,99 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: duplicity
+  namespace: duplicity-backup
+spec:
+  schedule: "* * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  suspend: true # cronjob is disabled by default
+  jobTemplate:
+    spec:
+      completions: 1
+      parallelism: 1
+      backoffLimit: 3
+      ttlSecondsAfterFinished: 1000
+      template:
+        metadata:
+          labels:
+            app: duplicity
+        spec:
+          # decide on this and keep it; duplicity will complain when you change it
+          hostname: duplicity
+          securityContext:
+            fsGroup: 1000
+
+          restartPolicy: Never
+          containers:
+            - name: duplicity
+              image: ghcr.io/poggenpower/duplicity-backup:lastest
+              imagePullPolicy: IfNotPresent
+              # command: ["sleep", "1h"] # use for debugging
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 100Mi
+                limits:
+                  cpu: 2000m
+                  memory: 500Mi
+
+              envFrom:
+                - secretRef:
+                    name: aws-api-key
+                - secretRef:
+                    name: smtp-auth-pw
+
+              securityContext:
+                runAsUser: 100
+                runAsGroup: 101
+                allowPrivilegeEscalation: false
+
+              volumeMounts:
+                - name: mydata
+                  mountPath: /mnt/mydata
+
+                - name: ssh
+                  mountPath: /home/app/.ssh
+
+                - name: gnupg
+                  mountPath: /home/app/.gnupg
+
+                - name: cache
+                  mountPath: /home/app/.cache/duplicity
+
+                - name: config
+                  subPath: backup.yml
+                  mountPath: /opt/backup.yml
+
+          # You will almost *certainly* need to customize this section yourself:
+          volumes:
+            # Directory containing the ssh key you want to use:
+            - name: ssh
+              persistentVolumeClaim:
+                claimName: duplicity-ssh
+
+            # Directory containing your GPG keys used to encrypt your backup:
+            - name: gnupg
+              persistentVolumeClaim:
+                claimName: duplicity-gnupg
+
+            # State tracking information for duplicity is kept here:
+            - name: cache
+              persistentVolumeClaim:
+                claimName: duplicity-cache
+
+            # Data you wish to backup:
+            - name: mydata
+              nfs:
+                server: schapp.wupp
+                path: /bilder
+
+            # Your configuration file, if you're using one (you probably should):
+            - name: config
+              configMap:
+                name: duplicity
+                # octal UNIX permissions 0644 == 420 decimal notation
+                defaultMode: 420

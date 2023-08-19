@@ -1,0 +1,114 @@
+usage: backup.py [-h]
+                 [--command {full,verify,collection-status,list-current-files,restore,remove-older-than,remove-all-but-n-full,cleanup,replicate}]
+                 [--args ARGS] [--config CONFIG] [--print_config [=flags]]
+                 [--title TITLE] [--gpg.fingerprint FINGERPRINT]
+                 [--gpg.public-key-pem PUBLIC_KEY_PEM]
+                 [--gpg.private-key-pem PRIVATE_KEY_PEM]
+                 [--source.baseDir BASEDIR] --dest.baseDir BASEDIR
+                 [--dest.proto PROTO] [--dest.user USER] [--dest.host HOST]
+                 [--dest.port PORT] [--dest.uri URI]
+                 [--directories DIRECTORIES]
+                 [--all-subdirectories {true,false}] [--no-default-config]
+                 [--email CONFIG] [--email.server SERVER] [--email.port PORT]
+                 [--email.sender SENDER] [--email.recipient RECIPIENT]
+                 [--email.user USER] [--email.password PASSWORD]
+
+default config file locations:
+  ['/opt/backup.yml'], Note: no existing default config file found.
+
+options:
+  -h, --help            Show this help message and exit.
+  ARG:   --command {full,verify,collection-status,list-current-files,restore,remove-older-than,remove-all-but-n-full,cleanup,replicate}
+  ENV:   DUPBACK_COMMAND
+                        Set duplicity command e.g. full, restore, remove-all-
+                        but-n-full (default: )
+  ARG:   --args ARGS, --args+ ARGS
+  ENV:   DUPBACK_ARGS
+                        (Default None) Extra args to duplicity. (type:
+                        List[str], default: [])
+  ARG:   --config CONFIG
+  ENV:   DUPBACK_CONFIG
+                        Path to a configuration file.
+  --print_config [=flags]
+                        Print the configuration after applying all other
+                        arguments and exit. The optional flags customizes the
+                        output and are one or more keywords separated by
+                        comma. The supported flags are: comments,
+                        skip_default, skip_null.
+  ARG:   --title TITLE
+  ENV:   DUPBACK_TITLE
+                        Nice name if the Job. (type: str, default: Backup)
+  ARG:   --gpg.fingerprint FINGERPRINT
+  ENV:   DUPBACK_GPG__FINGERPRINT
+                        Fingerprint of GPG key used to encrypt/sign backups.
+                        (required, type: str, default: )
+  ARG:   --gpg.public-key-pem PUBLIC_KEY_PEM
+  ENV:   DUPBACK_GPG__PUBLIC_KEY_PEM
+                        Public key in pem format. (type: str, default: null)
+  ARG:   --gpg.private-key-pem PRIVATE_KEY_PEM
+  ENV:   DUPBACK_GPG__PRIVATE_KEY_PEM
+                        Private key in pem format (password protected). (type:
+                        str, default: null)
+  ARG:   --source.baseDir BASEDIR
+  ENV:   DUPBACK_SOURCE__BASEDIR
+                        Base/root directory on the source filesystem.
+                        --directories are inside of this location. (type: str,
+                        default: )
+  ARG:   --dest.baseDir BASEDIR
+  ENV:   DUPBACK_DEST__BASEDIR
+                        Base/root directory on the destination filesystem.
+                        --directories will go to this location. (required,
+                        type: str)
+  ARG:   --dest.proto PROTO
+  ENV:   DUPBACK_DEST__PROTO
+                        Protocol used to backup. (type: str, default: null)
+  ARG:   --dest.user USER
+  ENV:   DUPBACK_DEST__USER
+                        User on the destination host to connect as. (type:
+                        str, default: null)
+  ARG:   --dest.host HOST
+  ENV:   DUPBACK_DEST__HOST
+                        The hostname or IP of the destination host. (type:
+                        str, default: null)
+  ARG:   --dest.port PORT
+  ENV:   DUPBACK_DEST__PORT
+                        Port on the destination host to connect on. (type:
+                        int, default: null)
+  ARG:   --dest.uri URI
+  ENV:   DUPBACK_DEST__URI
+                        Override *connection* URI. Does not change other
+                        `dest` values. (type: str, default: )
+  ARG:   --directories DIRECTORIES, --directories+ DIRECTORIES
+  ENV:   DUPBACK_DIRECTORIES
+                        list of directories to backup. in json syntax '[dirA,
+                        dirB]' (type: List[str], default: [])
+  ARG:   --all-subdirectories {true,false}
+  ENV:   DUPBACK_ALL_SUBDIRECTORIES
+                        all 1st level subdirectories of `source-basedir` get
+                        separatly backuped. `directories are ignored` (type:
+                        bool, default: False)
+  ARG:   --no-default-config
+  ENV:   DUPBACK_NO_DEFAULT_CONFIG
+                        do not load default config values from code and files.
+                        (default: False)
+
+<class 'result_reader.EmailSender.EmailParameter'>:
+  --email CONFIG        Path to a configuration file.
+  ARG:   --email.server SERVER
+  ENV:   DUPBACK_EMAIL__SERVER
+                        (type: str | None, default: null)
+  ARG:   --email.port PORT
+  ENV:   DUPBACK_EMAIL__PORT
+                        (type: int, default: 587)
+  ARG:   --email.sender SENDER
+  ENV:   DUPBACK_EMAIL__SENDER
+                        (type: str, default: jane.doe@example.com)
+  ARG:   --email.recipient RECIPIENT
+  ENV:   DUPBACK_EMAIL__RECIPIENT
+                        (type: str, default: jon.doe@example.com)
+  ARG:   --email.user USER
+  ENV:   DUPBACK_EMAIL__USER
+                        (type: str | None, default: null)
+  ARG:   --email.password PASSWORD
+  ENV:   DUPBACK_EMAIL__PASSWORD
+                        (type: str | None, default: null)

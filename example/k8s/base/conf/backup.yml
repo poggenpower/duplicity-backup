@@ -1,11 +1,32 @@
 ---
-command: full
-# args:
-#   - "--rsync-options="--bwlimit=4096""
-#   - "--allow-source-mismatch"
+full: false
+args:
+  - "--s3-use-glacier"
+  - "--allow-source-mismatch"
+  - --exclude-older-than 
+  - '2018-10-27'
+  - --exclude 
+  - '**/*.$.jpg'
+  - --exclude
+  - '**/.@__thumb'
+  - --exclude
+  - '**/.dtrash'
+  - --exclude
+  - '**/.streams'
+  - --exclude
+  - '**/.DS_Store'
+  - --exclude
+  - '**/@Recycle'
+  - --verbosity
+  - i
+  # - --dry-run
+
+log:
+  dir: /dev
+  file: stdout
 
 gpg:
-  fingerprint: SOMEKEY123GOES123HERE
+  public: 1FC7A49EF417B70D
 
 source:
   # /baseDir/directory
@@ -14,7 +35,7 @@ source:
   baseDir: /mnt/mydata
 
 dest:
-  uri: "rsync://root@someserver:22/" # this overrides proto/user/host/port *for duplicity only*
+  uri: "s3:///duplicity-photo" # this overrides proto/user/host/port *for duplicity only*
   proto: rsync
   user: root
   host: somehost
@@ -22,20 +43,13 @@ dest:
   # /baseDir/directory
   # eg, if baseDir is "/mnt/backup/mydata" and directories has "Documents",
   # the destination directory of the backup would be: /mnt/backup/mydata/Documents
-  baseDir: /mnt/backup/mydata
+  baseDir: /test2
 
 # /baseDir/directory
 # See notes above within the 'dest' section.
 directories:
   # Here are some examples:
-  - Code
-  - Documents/ebooks # example of sub-directory
-  - Documents/taxes # example of sub-directory
-  - Movies
-  - Music
-  - Pictures
-  - "Shows/Ergo Proxy" # example with space
-  - "Shows/My Hero Academia" # example with space
+  - 2018/12/26
 
   # Forward-slashes ("/") are treated like paths.
   # This means you can, for example, backup only a subdirectory.

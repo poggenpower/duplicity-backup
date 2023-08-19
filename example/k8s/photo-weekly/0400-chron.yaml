@@ -1,0 +1,15 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: duplicity
+spec:
+  schedule: "49 22 * * 3"
+  suspend: false
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          # containers:
+          #   - name: duplicity
+          #     command: ["sleep", "1h"]
