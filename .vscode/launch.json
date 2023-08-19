@@ -4,7 +4,6 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
         {
             "name": "Python: backup.py",
             "type": "python",
@@ -15,15 +14,19 @@
             "env": {
                 "GNUPGHOME": "/home/dummy-gpg",
             },
+            "envFile": "${workspaceFolder}/tmp/.env",
             "args": [
-                "--config", "./var/backup.yml",
-                "--command", "collection-status",
+                "--config",
+                "./tmp/conf.yaml",
+                // "--command",
+                // "collection-status",
                 // "--command", "restore",
                 // "--source.baseDir", "/tmp/restore",
                 // "--all-subdirectories", "false",
                 // "--directories", "['dpkg', 'cron.d']"
                 // "--command", "remove-all-but-n-full",
-                "--args", "['--log-file', '/tmp/dpu.log', '--show-changes-in-set', '0' ]"
+                // "--args",
+                // "['--log-file', '/tmp/dpu.log', '--show-changes-in-set', '0' ]"
                 // "['1','--force']",
             ]
         }

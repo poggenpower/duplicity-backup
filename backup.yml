@@ -1,15 +1,11 @@
 ---
-full: false
+command: full
 # args:
 #   - "--rsync-options="--bwlimit=4096""
 #   - "--allow-source-mismatch"
 
-log:
-  dir: /dev
-  file: stdout
-
-# gpg:
-  # fingerprint: SOMEKEY123GOES123HERE
+gpg:
+  fingerprint: SOMEKEY123GOES123HERE
 
 source:
   # /baseDir/directory
