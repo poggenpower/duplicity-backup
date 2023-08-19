@@ -11,11 +11,15 @@ name: Create and publish a Docker image
 
 on:
   push:
-    branches: ['main']
+    branches: ["main"]
+  pull_request:
+    branches:
+      - "main" 
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  SUFFIX: ${{ github.ref == 'refs/heads/main' && '' || format('dev{0}', github.run_number) }}
 
 jobs:
   build-and-push-image:
@@ -49,5 +53,5 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.get-latest-tag.outputs.tag }}dev${{ github.run_number }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.get-latest-tag.outputs.tag }}${{ env.SUFFIX }}
           labels: ${{ steps.meta.outputs.labels }}
