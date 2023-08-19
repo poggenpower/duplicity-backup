@@ -20,7 +20,7 @@ RUN	addgroup -S app &&\
 		~app/.gnupg && \
 	chown -R app:app ~app 
 
-COPY backup.py backup.yml requirements.txt /opt/app/
+COPY *.py backup.yml requirements.txt /opt/app/
 RUN pip install -r /opt/app/requirements.txt&& \
 	chown -R root:root /opt/app && \
 	find /opt/app -type d -exec chmod 755 {} + && \
