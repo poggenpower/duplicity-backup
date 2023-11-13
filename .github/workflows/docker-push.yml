@@ -44,10 +44,24 @@ jobs:
       - uses: actions-ecosystem/action-get-latest-tag@v1
         id: get-latest-tag
   
-      - name: Build and push Docker image
+      - name: Build Docker image
         uses: docker/build-push-action@v4.1.1
         with:
           context: .
-          push: true
+          push: false
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.get-latest-tag.outputs.tag }}dev${{ github.run_number }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.get-latest-tag.outputs.tag }}dev${{ github.run_number }}'
+  
+
+      - name: Push Docker image
+        uses: docker/build-push-action@v4.1.1
+        with:
+          context: .
+          push: false
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.get-latest-tag.outputs.tag }}dev${{ github.run_number }}
           labels: ${{ steps.meta.outputs.labels }}
