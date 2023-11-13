@@ -1,8 +1,20 @@
 # duplicity-backup
 A small, easy-to-use wrapper to assist in automating backups done with [duplicity](http://duplicity.nongnu.org/).
+This is based on https://github.com/intrand/duplicity-backup
+Main use case it to backup a large photo collection to Amazone S3 glacier storage, were each year gets its own backup. But should work with any duplicity supported backend. 
+
+# Features
+* manually specify set of directories that get a separate backup
+* give a parten folder and each direct subdirectory, gets its own backup
+* put GPG keys as PEM in the config.
+* backup works with public key only, no need to store the private key on a container/config. Of course some operations, like restore will need the private key. So keep it in a secure place otherwise your backup will be useless!
+
+## ToDo:
+* Send reports via email or web hook.
+* Create increamental backup only if files has changed (duplicity feature missing)
+* Do full backup after a certain amount of incrementals.
 
 # Setup
-Setup should be very straightforward as long as you have a working (passwordless) SSH connection from the source to destination. If you need to go over the Internet, I highly recommend using a VPN to tunnel your traffic.
 
 Here's a "loose" guide on how to set up your system:
 
@@ -38,7 +50,7 @@ Here's a "loose" guide on how to set up your system:
 		--mount source="${HOME}/backup.yml",destination="/opt/backup.yml",type=bind \
 		--mount source="${HOME}/.ssh",destination="/home/duplicity/.ssh",type=bind \
 		--mount source="/mnt/mydata",destination="/mnt/mydata",type=bind \
-	ghcr.io/intrand/duplicity-backup:latest \
+	ghcr.io/poggenpower/duplicity-backup:latest \
 		--args='--rsync-options="--bwlimit=4096"'
 	```
 
@@ -57,7 +69,7 @@ Here's a "loose" guide on how to set up your system:
 	docker pull ghcr.io/intrand/duplicity-backup:$release && \
 	docker run -ti --rm --name duplicity --hostname duplicity \
 		--mount <blah blah blah> \
-	ghcr.io/intrand/duplicity-backup:latest \
+	ghcr.io/poggenpower/duplicity-backup:latest \
 		--args='--rsync-options="--bwlimit=4096"' \
 		${@};
 	exit ${?};
