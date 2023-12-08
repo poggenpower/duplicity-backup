@@ -46,6 +46,7 @@ class ConfigParser:
             default="",
             choices=[
                 "full",
+                "inc",
                 "verify",
                 "collection-status",
                 "list-current-files",
