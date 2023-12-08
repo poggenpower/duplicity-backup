@@ -51,7 +51,7 @@ class DummySender(Sender):
 class EmailSender(Sender):
     @dataclass
     class EmailParameter:
-        server: str | None = None
+        server: str = "localhost"
         port: int = 587
         sender: str = "jane.doe@example.com"
         recipient: str = "jon.doe@example.com"
@@ -79,15 +79,17 @@ class EmailSender(Sender):
 
     def _rendert_text(self, report_list: list[BackupStat], header, info=None, error=None) -> str:
         out_text = header + "\n"
-        out_text += f"!!  {error} !!" if error else ""
+        out_text += f"\n!!  {error} !!\n\n" if error else ""
         out_text += info if info else ""
         out_text += self.__render_table(report_list).get_string()
         return out_text
 
     def _rendert_html(self, report_list: list[BackupStat], header, info=None, error=None) -> str:
         out_text = "<h1>" + header + "</h1>\n"
-        out_text += f"<b style='color:red;'>{error}</b>" if error else ""
-        out_text += f"<p>{info}</p>" if info else ""
+        out_text += f"""
+            <b style='color:red;'>{error}</b>
+        """ if error else ""
+        out_text += f"<p><pre>{info}</pre></p>" if info else ""
         out_text += self.__render_table(report_list).get_html_string()
         return out_text
 
@@ -117,22 +119,37 @@ class EmailSender(Sender):
 class ResultReader:
     def __init__(self, sender, title="") -> None:
         self.title: str = title
-        self.input = ""
+        self.json = ""
+        self.plain = ""
+        self.error_msg = ""
         self.stats: list[BackupStat] = []
-        self.sender: Sender | None = sender
+        self.sender: Sender = sender
 
-    def add(self, input: str):
+    def add_json(self, input: str):
         """
-        add string to the input
+        add string containging JSON blobs 
         """
-        self.input += input
+        self.json += input
+
+    def add_plain(self, input: str):
+        """
+        add plain text
+        """
+        self.plain = input
+
+    def add_error(self, error_mgs: str):
+        """
+        add error message
+        """
+        self.error_msg = error_mgs
+
 
     def parse_and_send(self) -> None:
         """
         parse all received information and send report
         """
         pattern = re.compile(r"\{(?:[^{}]|(?R))*\}")
-        json_blobs = pattern.findall(self.input)
+        json_blobs = pattern.findall(self.json)
         status = "Unknown"
         no_errors = 0
         no_delta = 0
@@ -153,11 +170,12 @@ class ResultReader:
         if len(self.stats) >= 1:
             status = "OK" if no_errors == 0 else "ERROR"
             status = f"{status}: {no_delta} changes."
-            self.sender.send(self.stats, header=self.title, status=status)
+            self.sender.send(self.stats, header=self.title, status=status, info=self.plain, error=self.error_msg)
         else:
             self.sender.send(
                 [BackupStat("Fatal Error")],
                 "Fatal Error",
                 error="no results found in duplicity output",
-                info=self.input,
+                info=self.json,
             )
+

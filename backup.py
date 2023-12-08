@@ -2,6 +2,7 @@
 import sys
 import os
 import pathlib
+from sh import gpg, duplicity # type: ignore
 import sh
 from jsonargparse import ArgumentParser, ActionConfigFile, Namespace
 from typing import Callable, List, Tuple
@@ -32,7 +33,7 @@ class ConfigurationIssue(Exception):
 
 class ConfigParser:
     def __init__(self):
-        self._cfg_d: Namespace | None = None
+        self._cfg_d: Namespace
         parser = ArgumentParser(
             default_config_files=["/opt/backup.yml"],
             env_prefix="DUPBACK",
@@ -124,7 +125,7 @@ class ConfigParser:
             return False, msg
         else:
             try:
-                public_key_available = self._cfg_d.gpg.fingerprint in sh.gpg(  # type: ignore
+                public_key_available = self._cfg_d.gpg.fingerprint in gpg(  # type: ignore
                     "--list-keys", "--with-colons", "--with-fingerprint", self._cfg_d.gpg.fingerprint
                 )
             except sh.ErrorReturnCode as sh_err:
@@ -137,12 +138,12 @@ class ConfigParser:
                 print(f"No key found with fingerprint {self._cfg_d.gpg.fingerprint}, try import")
                 if len(self._cfg_d.gpg.public_key_pem) > 0:
                     try:
-                        sh.gpg("--import", _in=self._cfg_d.gpg.public_key_pem)
-                        sh.gpg("--import-ownertrust", _in=f"{self._cfg_d.gpg.fingerprint}:6:\n")
-                        if not self._cfg_d.gpg.fingerprint in sh.gpg("--list-keys", "--with-colon", "--with-fingerprint"):
+                        gpg("--import", _in=self._cfg_d.gpg.public_key_pem)
+                        gpg("--import-ownertrust", _in=f"{self._cfg_d.gpg.fingerprint}:6:\n")
+                        if not self._cfg_d.gpg.fingerprint in gpg("--list-keys", "--with-colon", "--with-fingerprint"):
                             msg = f"Wrong key was imported, check fingerprint.\n"
-                            logging.info(sh.gpg("--list-keys"))
-                            logging.info(sh.gpg("--export-ownertrust"))
+                            logging.info(gpg("--list-keys"))
+                            logging.info(gpg("--export-ownertrust"))
                             return False, msg
                         print("Public Key import successful.")
                     except sh.ErrorReturnCode as sh_err:
@@ -157,7 +158,7 @@ class ConfigParser:
 
             if self._cfg_d.gpg.private_key_pem:
                 try:
-                    private_key_imported = self._cfg_d.gpg.fingerprint in sh.gpg(
+                    private_key_imported = self._cfg_d.gpg.fingerprint in gpg(
                         "--list-secret-keys",
                         "--with-colons",
                         "--with-fingerprint",
@@ -168,17 +169,17 @@ class ConfigParser:
 
                 if not private_key_imported:
                     try:
-                        sh.gpg(
+                        gpg(
                             "--import",
                             "--batch",
                             "--with-colons",
                             _in=self._cfg_d.gpg.private_key_pem,
                         )
-                        if not self._cfg_d.gpg.fingerprint in sh.gpg(
+                        if not self._cfg_d.gpg.fingerprint in gpg(
                             "--list-secret-keys", "--with-colon", "--with-fingerprint"
                         ):
                             sys.stderr.write(f"Wrong key was imported, check fingerprint.\n")
-                            print(sh.gpg("--list-secret-keys"))
+                            print(gpg("--list-secret-keys"))
                             if not os.getenv("PASSPHRASE"):
                                 print(
                                     "If your private key is encrypted, ensure env var 'PASSPHRASE' is set and valid."
@@ -213,10 +214,10 @@ class ConfigParser:
 
     def add_sublevel_arguments(self, sublevel: str, parameters: Callable, required=False):
         self.parser.add_argument(f"--{sublevel}", type=parameters, required=required)
-        self._cfg_d = None
+        # self._cfg_d = None
 
     def __call__(self) -> Namespace:
-        if not self._cfg_d:
+        if not hasattr(self, "_cfg_d"):
             self._cfg_d = self.parser.parse_args()
             if self._cfg_d.no_default_config:
                 self._cfg_d = self.parser.parse_args(defaults=False)
@@ -278,7 +279,7 @@ for item in config.directories:
         except Exception as e:
             msg = f"You must setup and test SSH ahead of time. See below for errors:\n{e}\n"
             logging.error(msg)
-            rr.add(msg)
+            rr.add_error(msg)
             rr.parse_and_send()
             sys.exit(1)
 
@@ -309,12 +310,12 @@ for item in config.directories:
     logging.info(out)
 
     try:
-        duplicity = sh.duplicity.bake(encrypt_key=config.gpg.fingerprint)
-        for line in duplicity(duplicity_args, _iter=True):
-            rr.add(line)
+        duplicity_sh = duplicity.bake(encrypt_key=config.gpg.fingerprint)
+        for line in duplicity_sh(duplicity_args, _iter=True):
+            rr.add_json(line)
             print(line, end="")
     except sh.ErrorReturnCode as sh_err:
-        rr.add(f"ERROR exitcode: {sh_err.stderr.decode()}")
+        rr.add_error(f"ERROR exitcode: {sh_err.stderr.decode()}")
         rr.parse_and_send()
         print(f"ERROR exitcode: {sh_err.stderr.decode()}")
         raise sh_err

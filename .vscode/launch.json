@@ -5,6 +5,26 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: Remote Attach",
+            "type": "python",
+            "request": "attach",
+            "connect": {
+                "host": "deb030.wupp",
+                "port": 5678
+            },
+            "pathMappings": [
+                {
+                    "localRoot": "${workspaceFolder}",
+                    "remoteRoot": "."
+                }
+            ],
+            "justMyCode": true,
+            // python -m debugpy --listen 5678 --wait-for-client ./backup.py
+            // python -m pip install debugpy
+            // kubectl -n duplicity-backup --address 0.0.0.0 port-forward pods/duplicity-photo-weekly-debug 5678:5678
+
+        },
+        {
             "name": "Python: backup.py",
             "type": "python",
             "request": "launch",
@@ -16,8 +36,8 @@
             },
             "envFile": "${workspaceFolder}/tmp/.env",
             "args": [
-                "--config",
-                "./tmp/conf.yaml",
+                "--config", "var/backup.yml",
+                // "./tmp/conf.yaml",
                 // "--command",
                 // "collection-status",
                 // "--command", "restore",
