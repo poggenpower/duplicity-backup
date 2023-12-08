@@ -1,4 +1,4 @@
-FROM docker.io/python:3-alpine
+FROM docker.io/python:3.11-alpine
 
 RUN apk fix && \
 	apk add --no-cache \
