@@ -86,10 +86,10 @@ class EmailSender(Sender):
 
     def _rendert_html(self, report_list: list[BackupStat], header, info=None, error=None) -> str:
         out_text = "<h1>" + header + "</h1>\n"
-        out_text += f"""
-            <b style='color:red;'>{error}</b>
+        out_text += f"""<h2>Errors</h2>
+            <b style='color:red;'><pre style='color:red;'>{error}</pre></b>
         """ if error else ""
-        out_text += f"<p><pre>{info}</pre></p>" if info else ""
+        out_text += f"<h2>Info</h2><p><pre>{info}</pre></p>" if info else ""
         out_text += self.__render_table(report_list).get_html_string()
         return out_text
 
@@ -135,13 +135,13 @@ class ResultReader:
         """
         add plain text
         """
-        self.plain = input
+        self.plain += "\n\n" + input if self.plain else input
 
     def add_error(self, error_mgs: str):
         """
         add error message
         """
-        self.error_msg = error_mgs
+        self.error_msg += "\n\n" + error_mgs if self.error_msg else error_mgs
 
 
     def parse_and_send(self) -> None:
@@ -168,7 +168,7 @@ class ResultReader:
             if bs.deltaentries > 0:
                 no_delta += bs.deltaentries
         if len(self.stats) >= 1:
-            status = "OK" if no_errors == 0 else "ERROR"
+            status = "OK" if no_errors == 0 or self.error_msg else "ERROR"
             status = f"{status}: {no_delta} changes."
             self.sender.send(self.stats, header=self.title, status=status, info=self.plain, error=self.error_msg)
         else:

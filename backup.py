@@ -316,7 +316,10 @@ for item in config.directories:
             rr.add_json(line)
             print(line, end="")
     except sh.ErrorReturnCode as sh_err:
-        rr.add_error(f"ERROR exitcode: {sh_err.stderr.decode()}")
+        rr.add_error(f"""ERROR exitcode: {sh_err.exit_code}
+                     ============== 
+                     {sh_err.stderr.decode()}
+                     ============== """)
         rr.parse_and_send()
         print(f"ERROR exitcode: {sh_err.stderr.decode()}")
         raise sh_err
