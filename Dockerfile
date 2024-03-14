@@ -10,7 +10,7 @@ RUN apk fix && \
 RUN pip install setuptools_scm boto3 python-gettext &&\
 	apk add gettext &&\
 	apk add -t .build-deps gcc musl-dev librsync-dev git &&\
-	pip install --editable https://gitlab.com/duplicity/duplicity/-/archive/issue745/duplicity-issue745.zip &&\
+	pip install https://gitlab.com/duplicity/duplicity/-/archive/issue745/duplicity-issue745.zip &&\
 	apk del --purge .build-deps
 
 RUN	addgroup -S app &&\
