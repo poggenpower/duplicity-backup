@@ -9,8 +9,8 @@ RUN apk fix && \
 # install dev version of duplicity change URL or comment out
 RUN pip install setuptools_scm boto3 python-gettext &&\
 	apk add gettext &&\
-	apk add -t .build-deps gcc musl-dev librsync-dev git &&\
-	pip install duplicity==3.0.0 &&\
+	apk add -t .build-deps gcc musl-dev librsync-dev git pipx &&\
+	pipx install duplicity==3.0.0 &&\
 	apk del --purge .build-deps
 
 RUN	addgroup -S app &&\
