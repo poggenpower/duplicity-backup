@@ -4,7 +4,8 @@ RUN apk fix && \
 	apk add --no-cache \
 		ca-certificates \
 		openssh \
-		rsync
+  		gpg \
+		librsync
 # install dev version of duplicity change URL or comment out
 RUN pip install setuptools_scm boto3 python-gettext &&\
 	apk add gettext &&\
