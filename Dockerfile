@@ -3,14 +3,13 @@ FROM docker.io/python:3.11-alpine
 RUN apk fix && \
 	apk add --no-cache \
 		ca-certificates \
-		duplicity \
 		openssh \
 		rsync
 # install dev version of duplicity change URL or comment out
 RUN pip install setuptools_scm boto3 python-gettext &&\
 	apk add gettext &&\
-	apk add -t .build-deps gcc musl-dev librsync-dev git pipx &&\
-	pipx install duplicity==3.0.0 &&\
+	apk add -t .build-deps linux-headers python3-dev librsync-dev gcc musl-dev git &&\
+	pip install duplicity==3.0.0 &&\
 	apk del --purge .build-deps
 
 RUN	addgroup -S app &&\
