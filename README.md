@@ -16,7 +16,7 @@ You can backup the whole structure at once. But this will create a huge backup. 
 But chaining many incremental backups increase the risk of data corruption as one damaged incremental corrupts all following. Therefore regular full backups are required - which are huge again.
 
 ### Solution:
-duplicity-backup will create one backup per year if if `--source.Basedir` is pointing to you pfoto collection and `--all-subdirectories` is given. 
+duplicity-backup will create one backup per year if if `--source.Basedir` is pointing to you photo collection and `--all-subdirectories` is given. 
 Incremental are only created if there are changes for that year, which should not be the case for most of the past years, but they get a backup if changed, so no manual housekeeping is required. 
 If there are a certain amount of incremental backups an full backup is made for this specific year. A configurable amount of full backups is kept per year.
 
@@ -53,7 +53,7 @@ Here's a "loose" guide on how to set up your system:
 
 3. run docker container:
 	```sh
-	docker pull ghcr.io/intrand/duplicity-backup:$release && \
+	docker pull ghcr.io/poggenpower/duplicity-backup:$release && \
 	docker run \
 		-ti \
 		--rm \
@@ -64,7 +64,7 @@ Here's a "loose" guide on how to set up your system:
 		--mount source="${HOME}/backup.yml",destination="/opt/backup.yml",type=bind \
 		--mount source="${HOME}/.ssh",destination="/home/duplicity/.ssh",type=bind \
 		--mount source="/mnt/mydata",destination="/mnt/mydata",type=bind \
-	ghcr.io/poggenpower/duplicity-backup:latest \
+	ghcr.io/poggenpower/duplicity-backup:$release \
 		--args='--rsync-options="--bwlimit=4096"'
 	```
 
@@ -80,10 +80,10 @@ Here's a "loose" guide on how to set up your system:
 	```sh
 	# contents of ~/backup.sh:
 	#!/bin/sh
-	docker pull ghcr.io/intrand/duplicity-backup:$release && \
+	docker pull ghcr.io/poggenpower/duplicity-backup:$release && \
 	docker run -ti --rm --name duplicity --hostname duplicity \
 		--mount <blah blah blah> \
-	ghcr.io/intrand/duplicity-backup:latest \
+	ghcr.io/poggenpower/duplicity-backup:latest \
 		--args='--rsync-options="--bwlimit=4096"' \
 		${@};
 	exit ${?};
