@@ -1,16 +1,17 @@
-FROM docker.io/python:3-alpine
+FROM docker.io/python:3.11-alpine
 
 RUN apk fix && \
 	apk add --no-cache \
 		ca-certificates \
-		duplicity \
 		openssh \
-		rsync
+  		gpg \
+    		gpg-agent \
+		librsync
 # install dev version of duplicity change URL or comment out
 RUN pip install setuptools_scm boto3 python-gettext &&\
 	apk add gettext &&\
-	apk add -t .build-deps gcc musl-dev librsync-dev git &&\
-	pip install https://gitlab.com/poggenpower/duplicity/-/archive/issue722-stats-json/duplicity-issue722-stats-json.zip &&\
+	apk add -t .build-deps linux-headers python3-dev librsync-dev gcc musl-dev git &&\
+	pip install duplicity==3.0.0 &&\
 	apk del --purge .build-deps
 
 RUN	addgroup -S app &&\
@@ -20,7 +21,7 @@ RUN	addgroup -S app &&\
 		~app/.gnupg && \
 	chown -R app:app ~app 
 
-COPY backup.py backup.yml requirements.txt /opt/app/
+COPY *.py backup.yml requirements.txt /opt/app/
 RUN pip install -r /opt/app/requirements.txt&& \
 	chown -R root:root /opt/app && \
 	find /opt/app -type d -exec chmod 755 {} + && \

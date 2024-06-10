@@ -1,20 +1,31 @@
 # duplicity-backup
 A small, easy-to-use wrapper to assist in automating backups done with [duplicity](http://duplicity.nongnu.org/).
-This is based on https://github.com/intrand/duplicity-backup
-Main use case it to backup a large photo collection to Amazone S3 glacier storage, were each year gets its own backup. But should work with any duplicity supported backend. 
+With special use case Backup of photo collection or other tye pf archives.
 
-# Features
-* manually specify set of directories that get a separate backup
-* give a parten folder and each direct subdirectory, gets its own backup
-* put GPG keys as PEM in the config.
-* backup works with public key only, no need to store the private key on a container/config. Of course some operations, like restore will need the private key. So keep it in a secure place otherwise your backup will be useless!
+## Features
+- full configurable by ENV Vars, config file or command line switches
+	- use `--help` for full list of parameter or check the backup.yml as example config
+- trigger one backup per source to decuple.
+	- Special use case: create a separate backup for all subdirectories. 
+- report backup runs via Email
 
-## ToDo:
-* Send reports via email or web hook.
-* Create increamental backup only if files has changed (duplicity feature missing)
-* Do full backup after a certain amount of incrementals.
+## Use Case: Photo Collention Backup
 
-# Setup
+Typical photo collection has a folder structure, e.g. the higest level is the year and then month or event. 
+You can backup the whole structure at once. But this will create a huge backup. As you constantly adding new photos regular incrementat backups are needded. 
+But chaining many incremental backups increase the risk of data corruption as one damaged incremental corrupts all following. Therefore regular full backups are required - which are huge again.
+
+### Solution:
+duplicity-backup will create one backup per year if if `--source.Basedir` is pointing to you photo collection and `--all-subdirectories` is given. 
+Incremental are only created if there are changes for that year, which should not be the case for most of the past years, but they get a backup if changed, so no manual housekeeping is required. 
+If there are a certain amount of incremental backups an full backup is made for this specific year. A configurable amount of full backups is kept per year.
+
+# Setup Example Kubernets
+
+see `exampel/k8s/` for a kubernetes deployment.
+
+# Setup Example Docker 
+Setup should be very straightforward as long as you have a working (passwordless) SSH connection from the source to destination. If you need to go over the Internet, I highly recommend using a VPN to tunnel your traffic.
 
 Here's a "loose" guide on how to set up your system:
 
@@ -30,16 +41,19 @@ Here's a "loose" guide on how to set up your system:
 	```sh
 	gpg --list-keys
 	```
+	!!! IMPORTANT !!! don't loose these keys, otherwise your backup is lost too. 
+	Alternatively you can put the keys as PEM in the config file. 
 
 2. ssh keys:
 	```sh
 	ssh-keygen -t ecdsa -b 521
 	ssh-copy-id user@remote.domain.tld
 	```
+	Only required if backup via ssh. 
 
 3. run docker container:
 	```sh
-	docker pull ghcr.io/intrand/duplicity-backup:$release && \
+	docker pull ghcr.io/poggenpower/duplicity-backup:$release && \
 	docker run \
 		-ti \
 		--rm \
@@ -50,7 +64,7 @@ Here's a "loose" guide on how to set up your system:
 		--mount source="${HOME}/backup.yml",destination="/opt/backup.yml",type=bind \
 		--mount source="${HOME}/.ssh",destination="/home/duplicity/.ssh",type=bind \
 		--mount source="/mnt/mydata",destination="/mnt/mydata",type=bind \
-	ghcr.io/poggenpower/duplicity-backup:latest \
+	ghcr.io/poggenpower/duplicity-backup:$release \
 		--args='--rsync-options="--bwlimit=4096"'
 	```
 
@@ -66,7 +80,7 @@ Here's a "loose" guide on how to set up your system:
 	```sh
 	# contents of ~/backup.sh:
 	#!/bin/sh
-	docker pull ghcr.io/intrand/duplicity-backup:$release && \
+	docker pull ghcr.io/poggenpower/duplicity-backup:$release && \
 	docker run -ti --rm --name duplicity --hostname duplicity \
 		--mount <blah blah blah> \
 	ghcr.io/poggenpower/duplicity-backup:latest \
