@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
+import json
 import sys
 import os
 import pathlib
+import time
 from sh import gpg, duplicity # type: ignore
 import sh
 from jsonargparse import ArgumentParser, ActionConfigFile, Namespace
 from typing import Callable, List, Tuple
+import textwrap
+import regex as re
 
 from result_reader import ResultReader, EmailSender, DummySender
 
 import logging
 import logging.handlers
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -20,7 +25,7 @@ logFormatter = logging.Formatter(
 
 consoleHandler = logging.StreamHandler()
 consoleHandler.setFormatter(logFormatter)
-logging.getLogger().addHandler(consoleHandler)
+# logging.getLogger().addHandler(consoleHandler)
 logging.getLogger().handlers[0].setFormatter(logFormatter)  # reconfigure the root logger
 
 
@@ -46,6 +51,7 @@ class ConfigParser:
             default="",
             choices=[
                 "full",
+                "backup",
                 "inc",
                 "verify",
                 "collection-status",
@@ -103,6 +109,24 @@ class ConfigParser:
             required=False,
             default=False,
             help="do not load default config values from code and files.",
+        )
+        parser.add_argument(
+            "--do-full-after",
+            required=False,
+            default=0,
+            help="Create a full backup after given # incrementals. It is recommend to use this with duplicity option --skip-if-no-change. Otherwise you may want to use duplicity option --full-if-older-than",
+        )
+
+        parser.add_argument(
+            "--keep-n-full",
+            required=False,
+            default=0,
+            help="Clean up with duplicity `remove-all-but-n-full` to clean up",
+        )
+        parser.add_argument(
+            "--log-level",
+            required = False,
+            help="Set loglevel NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL"
         )
         self.parser = parser
 
@@ -228,6 +252,19 @@ class ConfigParser:
     def usage(self):
         print(self.parser.print_help())
 
+def get_no_of_increments(duplicityDest):
+    pattern = re.compile(r"\{(?:[^{}]|(?R))*\}")
+    inc_count=0
+    try:
+        dup_out =  duplicity(["collection-status", duplicityDest, '--show-changes-in-set', "0", "--jsonstat"])
+        dub_jsons = pattern.findall(dup_out)[0]
+        dub_json = json.loads(dub_jsons)
+        index_stat = dub_json.popitem()[1]
+        inc_count = index_stat['json_stat']['backup_meta']['no_of_inc']
+    except Exception as e:
+        logging.error(f"Can't get backup jsons statistics. Make sure to run duplicity with --jsonstat. Error: {e} at {duplicityDest}")
+    time.sleep(0.5)
+    return inc_count
 
 # precedence:
 # 1. args (override all)
@@ -252,7 +289,8 @@ except ConfigurationIssue as ci:
     logging.error(ci)
     exit(2)
 
-
+if config.log_level:
+    logging.getLogger().setLevel(config.log_level)
 
 for item in config.directories:
     duplicitySource = os.path.join(config.source.baseDir, item)
@@ -284,6 +322,10 @@ for item in config.directories:
             rr.parse_and_send()
             sys.exit(1)
 
+    if config.do_full_after > 0 and config.command in ["inc", "backup", ""]:
+        if get_no_of_increments(duplicityDest) >= config.do_full_after:
+            config.command = "full"
+
     duplicity_args = []
     skip_dest = skip_source = False
     if "full" == config.command:
@@ -295,7 +337,7 @@ for item in config.directories:
         skip_source = True
         duplicity_args.append(config.command)
     else:
-        duplicity_args.append("inc")
+        duplicity_args.append("backup")
     if config.args:
         if type(config.args) == list:  # no nested lists
             duplicity_args.extend(config.args)  # no nested lists
@@ -314,7 +356,15 @@ for item in config.directories:
         duplicity_sh = duplicity.bake(encrypt_key=config.gpg.fingerprint)
         for line in duplicity_sh(duplicity_args, _iter=True):
             rr.add_json(line)
-            print(line, end="")
+            logging.info(line.strip())
+        if config.keep_n_full > 0 and config.command in ["inc", "backup", "full"]:
+            cleanup_out =  duplicity_sh(["remove-all-but-n-full", str(config.keep_n_full), "--force",duplicityDest])
+            if not "No old backup sets found, nothing deleted" in cleanup_out:
+                cleanup_out = textwrap.indent(cleanup_out, "." * 9 + " ")
+                msg = f"Clean up: {duplicityDest}\n{cleanup_out}"
+                logging.info(msg)
+                rr.add_footer(msg)
+
     except sh.ErrorReturnCode as sh_err:
         rr.add_error(f"""ERROR exitcode: {sh_err.exit_code}
                      ============== 

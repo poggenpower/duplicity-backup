@@ -77,25 +77,28 @@ class EmailSender(Sender):
             table.add_row(asdict(row).values())
         return table
 
-    def _rendert_text(self, report_list: list[BackupStat], header, info=None, error=None) -> str:
+    def _rendert_text(self, report_list: list[BackupStat], header, info=None, error=None, footer=None) -> str:
         out_text = header + "\n"
         out_text += f"\n!!  {error} !!\n\n" if error else ""
         out_text += info if info else ""
         out_text += self.__render_table(report_list).get_string()
+        out_text += f"---------------\n{footer}" if footer else ""
+
         return out_text
 
-    def _rendert_html(self, report_list: list[BackupStat], header, info=None, error=None) -> str:
+    def _rendert_html(self, report_list: list[BackupStat], header, info=None, error=None, footer=None) -> str:
         out_text = "<h1>" + header + "</h1>\n"
         out_text += f"""<h2>Errors</h2>
             <b style='color:red;'><pre style='color:red;'>{error}</pre></b>
         """ if error else ""
         out_text += f"<h2>Info</h2><p><pre>{info}</pre></p>" if info else ""
         out_text += self.__render_table(report_list).get_html_string()
+        out_text += f"<br><p><pre>{footer}</pre></p>" if footer else ""
         return out_text
 
-    def send(self, report_list: list[BackupStat], status="N/A", header="", info="", error=""):
-        text = self._rendert_text(report_list, f"{status} - {header}", info=info, error=error)
-        html = self._rendert_html(report_list, f"{status} - {header}", info=info, error=error)
+    def send(self, report_list: list[BackupStat], status="N/A", header="", info="", error="", footer=""):
+        text = self._rendert_text(report_list, f"{status} - {header}", info=info, error=error, footer=footer)
+        html = self._rendert_html(report_list, f"{status} - {header}", info=info, error=error, footer=footer)
         part_text = MIMEText(text, "plain")
         part_html = MIMEText(html, "html")
 
@@ -122,6 +125,7 @@ class ResultReader:
         self.json = ""
         self.plain = ""
         self.error_msg = ""
+        self.footer = ""
         self.stats: list[BackupStat] = []
         self.sender: Sender = sender
 
@@ -142,6 +146,12 @@ class ResultReader:
         add error message
         """
         self.error_msg += "\n\n" + error_mgs if self.error_msg else error_mgs
+
+    def add_footer(self, input: str):
+        """
+        add footer text
+        """
+        self.footer += "\n\n" + input if self.footer else input
 
 
     def parse_and_send(self) -> None:
@@ -170,12 +180,13 @@ class ResultReader:
         if len(self.stats) >= 1:
             status = "OK" if no_errors == 0 or self.error_msg else "ERROR"
             status = f"{status}: {no_delta} changes."
-            self.sender.send(self.stats, header=self.title, status=status, info=self.plain, error=self.error_msg)
+            self.sender.send(self.stats, header=self.title, status=status, info=self.plain, error=self.error_msg, footer=self.footer)
         else:
             self.sender.send(
                 [BackupStat("Fatal Error")],
                 "Fatal Error",
                 error="no results found in duplicity output",
                 info=self.json,
+                footer=self.footer
             )
 

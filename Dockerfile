@@ -4,8 +4,8 @@ RUN apk fix && \
 	apk add --no-cache \
 		ca-certificates \
 		openssh \
-  		gpg \
-    		gpg-agent \
+		gpg \
+		gpg-agent \
 		librsync
 # install dev version of duplicity change URL or comment out
 RUN pip install setuptools_scm boto3 python-gettext &&\

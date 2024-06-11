@@ -130,3 +130,5 @@ dmypy.json
 
 #local temp dir for test files ect.
 tmp/**
+.DS_Store
+test/**
