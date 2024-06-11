@@ -11,7 +11,7 @@ RUN apk fix && \
 RUN pip install setuptools_scm boto3 python-gettext &&\
 	apk add gettext &&\
 	apk add -t .build-deps linux-headers python3-dev librsync-dev gcc musl-dev git &&\
-	pip install duplicity==3.0.0 &&\
+	pip install https://gitlab.com/poggenpower/duplicity/-/archive/queue/duplicity-queue.tar.gz &&\
 	apk del --purge .build-deps
 
 RUN	addgroup -S app &&\
