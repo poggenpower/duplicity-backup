@@ -4,7 +4,7 @@ import sys
 import os
 import pathlib
 import time
-from sh import gpg, duplicity # type: ignore
+from sh import gpg, duplicity  # type: ignore
 import sh
 from jsonargparse import ArgumentParser, ActionConfigFile, Namespace
 from typing import Callable, List, Tuple
@@ -26,7 +26,9 @@ logFormatter = logging.Formatter(
 consoleHandler = logging.StreamHandler()
 consoleHandler.setFormatter(logFormatter)
 # logging.getLogger().addHandler(consoleHandler)
-logging.getLogger().handlers[0].setFormatter(logFormatter)  # reconfigure the root logger
+logging.getLogger().handlers[0].setFormatter(
+    logFormatter
+)  # reconfigure the root logger
 
 
 SSH_BASED_PROTOS = ["ssh", "rsync"]
@@ -64,14 +66,42 @@ class ConfigParser:
             ],
             help="Set duplicity command e.g. full, restore, remove-all-but-n-full",
         )
-        parser.add_argument("--args", type=List[str], required=False, default=[], help="(Default None) Extra args to duplicity.",)
+        parser.add_argument(
+            "--args",
+            type=List[str],
+            required=False,
+            default=[],
+            help="(Default None) Extra args to duplicity.",
+        )
         parser.add_argument("--config", action=ActionConfigFile)
-        parser.add_argument("--title", type=str, required=False, default="Backup", help="Nice name if the Job.")
+        parser.add_argument(
+            "--title",
+            type=str,
+            required=False,
+            default="Backup",
+            help="Nice name if the Job.",
+        )
 
         # optional overrides
-        parser.add_argument("--gpg.fingerprint", type=str, required=True, default="", help="Fingerprint of GPG key used to encrypt/sign backups.",)
-        parser.add_argument("--gpg.public-key-pem", type=str, required=False, help="Public key in pem format.",)
-        parser.add_argument("--gpg.private-key-pem", type=str, required=False, help="Private key in pem format (password protected).",)
+        parser.add_argument(
+            "--gpg.fingerprint",
+            type=str,
+            required=True,
+            default="",
+            help="Fingerprint of GPG key used to encrypt/sign backups.",
+        )
+        parser.add_argument(
+            "--gpg.public-key-pem",
+            type=str,
+            required=False,
+            help="Public key in pem format.",
+        )
+        parser.add_argument(
+            "--gpg.private-key-pem",
+            type=str,
+            required=False,
+            help="Private key in pem format (password protected).",
+        )
         parser.add_argument(
             "--source.baseDir",
             type=str,
@@ -85,11 +115,34 @@ class ConfigParser:
             required=True,
             help="Base/root directory on the destination filesystem. --directories will go to this location.",
         )
-        parser.add_argument("--dest.proto", type=str, required=False, help="Protocol used to backup.")
-        parser.add_argument("--dest.user", type=str, required=False, help="User on the destination host to connect as.",)
-        parser.add_argument("--dest.host", type=str, required=False, help="The hostname or IP of the destination host.",)
-        parser.add_argument("--dest.port", type=int, required=False, help="Port on the destination host to connect on.")
-        parser.add_argument("--dest.uri", type=str, required=False, default="", help="Override *connection* URI. Does not change other `dest` values.",)
+        parser.add_argument(
+            "--dest.proto", type=str, required=False, help="Protocol used to backup."
+        )
+        parser.add_argument(
+            "--dest.user",
+            type=str,
+            required=False,
+            help="User on the destination host to connect as.",
+        )
+        parser.add_argument(
+            "--dest.host",
+            type=str,
+            required=False,
+            help="The hostname or IP of the destination host.",
+        )
+        parser.add_argument(
+            "--dest.port",
+            type=int,
+            required=False,
+            help="Port on the destination host to connect on.",
+        )
+        parser.add_argument(
+            "--dest.uri",
+            type=str,
+            required=False,
+            default="",
+            help="Override *connection* URI. Does not change other `dest` values.",
+        )
         parser.add_argument(
             "--directories",
             type=List[str],
@@ -125,13 +178,17 @@ class ConfigParser:
         )
         parser.add_argument(
             "--log-level",
-            required = False,
-            help="Set loglevel NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL"
+            required=False,
+            help="Set loglevel NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL",
         )
         self.parser = parser
 
     def validate_config(self) -> bool:
-        validators = [self._validate_gpg_settings, self._validate_url, self._validate_sourcedir]
+        validators = [
+            self._validate_gpg_settings,
+            self._validate_url,
+            self._validate_sourcedir,
+        ]
         status = True
         msg = ""
         for validator in validators:
@@ -151,7 +208,10 @@ class ConfigParser:
         else:
             try:
                 public_key_available = self._cfg_d.gpg.fingerprint in gpg(  # type: ignore
-                    "--list-keys", "--with-colons", "--with-fingerprint", self._cfg_d.gpg.fingerprint
+                    "--list-keys",
+                    "--with-colons",
+                    "--with-fingerprint",
+                    self._cfg_d.gpg.fingerprint,
                 )
             except sh.ErrorReturnCode as sh_err:
                 if b"No public key" in sh_err.stderr:
@@ -160,12 +220,19 @@ class ConfigParser:
                     raise sh_err
 
             if not public_key_available:
-                print(f"No key found with fingerprint {self._cfg_d.gpg.fingerprint}, try import")
+                print(
+                    f"No key found with fingerprint {self._cfg_d.gpg.fingerprint}, try import"
+                )
                 if len(self._cfg_d.gpg.public_key_pem) > 0:
                     try:
                         gpg("--import", _in=self._cfg_d.gpg.public_key_pem)
-                        gpg("--import-ownertrust", _in=f"{self._cfg_d.gpg.fingerprint}:6:\n")
-                        if not self._cfg_d.gpg.fingerprint in gpg("--list-keys", "--with-colon", "--with-fingerprint"):
+                        gpg(
+                            "--import-ownertrust",
+                            _in=f"{self._cfg_d.gpg.fingerprint}:6:\n",
+                        )
+                        if not self._cfg_d.gpg.fingerprint in gpg(
+                            "--list-keys", "--with-colon", "--with-fingerprint"
+                        ):
                             msg = f"Wrong key was imported, check fingerprint.\n"
                             logging.info(gpg("--list-keys"))
                             logging.info(gpg("--export-ownertrust"))
@@ -203,7 +270,9 @@ class ConfigParser:
                         if not self._cfg_d.gpg.fingerprint in gpg(
                             "--list-secret-keys", "--with-colon", "--with-fingerprint"
                         ):
-                            sys.stderr.write(f"Wrong key was imported, check fingerprint.\n")
+                            sys.stderr.write(
+                                f"Wrong key was imported, check fingerprint.\n"
+                            )
                             print(gpg("--list-secret-keys"))
                             if not os.getenv("PASSPHRASE"):
                                 print(
@@ -229,15 +298,20 @@ class ConfigParser:
             # replacing directories with all subdirectories of source base dir
             rootdir = f"{self._cfg_d.source.baseDir}"
             if pathlib.Path(rootdir):
-                subdirs = [x.name for x in os.scandir(rootdir) if x.is_dir() and not x.name.startswith((".", "@"))]
+                subdirs = [
+                    x.name
+                    for x in os.scandir(rootdir)
+                    if x.is_dir() and not x.name.startswith((".", "@"))
+                ]
                 self._cfg_d.update(subdirs, "directories")
 
         if len(self._cfg_d.directories) <= 0:
             return False, "No Source directories found"
         return True, ""
 
-
-    def add_sublevel_arguments(self, sublevel: str, parameters: Callable, required=False):
+    def add_sublevel_arguments(
+        self, sublevel: str, parameters: Callable, required=False
+    ):
         self.parser.add_argument(f"--{sublevel}", type=parameters, required=required)
         # self._cfg_d = None
 
@@ -252,19 +326,31 @@ class ConfigParser:
     def usage(self):
         print(self.parser.print_help())
 
+
 def get_no_of_increments(duplicityDest):
     pattern = re.compile(r"\{(?:[^{}]|(?R))*\}")
-    inc_count=0
+    inc_count = 0
     try:
-        dup_out =  duplicity(["collection-status", duplicityDest, '--show-changes-in-set', "0", "--jsonstat"])
+        dup_out = duplicity(
+            [
+                "collection-status",
+                duplicityDest,
+                "--show-changes-in-set",
+                "0",
+                "--jsonstat",
+            ]
+        )
         dub_jsons = pattern.findall(dup_out)[0]
         dub_json = json.loads(dub_jsons)
         index_stat = dub_json.popitem()[1]
-        inc_count = index_stat['json_stat']['backup_meta']['no_of_inc']
+        inc_count = index_stat["json_stat"]["backup_meta"]["no_of_inc"]
     except Exception as e:
-        logging.error(f"Can't get backup jsons statistics. Make sure to run duplicity with --jsonstat. Error: {e} at {duplicityDest}")
+        logging.error(
+            f"Can't get backup jsons statistics. Make sure to run duplicity with --jsonstat. Error: {e} at {duplicityDest}"
+        )
     time.sleep(0.5)
     return inc_count
+
 
 # precedence:
 # 1. args (override all)
@@ -283,7 +369,7 @@ try:
     else:
         sender = DummySender()
     rr = ResultReader(sender, title=config.title)
-    
+
 except ConfigurationIssue as ci:
     cp.usage()
     logging.error(ci)
@@ -333,7 +419,12 @@ for item in config.directories:
     elif "restore" == config.command or "verify" in config.command:
         duplicityDest, duplicitySource = duplicitySource, duplicityDest
         duplicity_args.append(config.command)
-    elif any([x in config.command for x in ["collection-status", "remove", "cleanup", "list-current-files"]]):
+    elif any(
+        [
+            x in config.command
+            for x in ["collection-status", "remove", "cleanup", "list-current-files"]
+        ]
+    ):
         skip_source = True
         duplicity_args.append(config.command)
     else:
@@ -358,7 +449,14 @@ for item in config.directories:
             rr.add_json(line)
             logging.info(line.strip())
         if config.keep_n_full > 0 and config.command in ["inc", "backup", "full"]:
-            cleanup_out =  duplicity_sh(["remove-all-but-n-full", str(config.keep_n_full), "--force",duplicityDest])
+            cleanup_out = duplicity_sh(
+                [
+                    "remove-all-but-n-full",
+                    str(config.keep_n_full),
+                    "--force",
+                    duplicityDest,
+                ]
+            )
             if not "No old backup sets found, nothing deleted" in cleanup_out:
                 cleanup_out = textwrap.indent(cleanup_out, "." * 9 + " ")
                 msg = f"Clean up: {duplicityDest}\n{cleanup_out}"
@@ -366,10 +464,12 @@ for item in config.directories:
                 rr.add_footer(msg)
 
     except sh.ErrorReturnCode as sh_err:
-        rr.add_error(f"""ERROR exitcode: {sh_err.exit_code}
+        rr.add_error(
+            f"""ERROR exitcode: {sh_err.exit_code}
                      ============== 
                      {sh_err.stderr.decode()}
-                     ============== """)
+                     ============== """
+        )
         rr.parse_and_send()
         print(f"ERROR exitcode: {sh_err.stderr.decode()}")
         raise sh_err
