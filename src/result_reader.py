@@ -15,9 +15,11 @@ from prettytable import PrettyTable
 @dataclass
 class BackupStat:
     source: str
-    errors: int = -1
+    newfiles: int = -1
     deltaentries: int = -1
     no_of_inc: int = -1
+    elapsedtime: str = "?"
+    errors: int = -1
 
 
 class Sender(ABC):
@@ -190,12 +192,14 @@ class ResultReader:
         no_delta = 0
         for result_str in json_blobs:
             result = json.loads(result_str)
-
+            elapsed_time = result.get("ElapsedTime", -1)
             bs = BackupStat(
                 result["backup_meta"].get("source", "Error no source"),
-                result.get("Errors", -1),
+                result.get("NewFiles", -1),
                 result.get("DeltaEntries", -1),
                 result["backup_meta"].get("no_of_inc", -1),
+                f'{elapsed_time:.2f}',
+                result.get("Errors", -1),
             )
             self.stats.append(bs)
             if bs.errors > 0:
