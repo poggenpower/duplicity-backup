@@ -11,7 +11,7 @@ RUN apk fix && \
 RUN pip install setuptools_scm boto3 python-gettext &&\
 	apk add gettext &&\
 	apk add -t .build-deps linux-headers python3-dev librsync-dev gcc musl-dev git &&\
-	pip install https://gitlab.com/duplicity/duplicity/-/archive/issue826/duplicity-issue826.tar.gz &&\
+	pip install https://gitlab.com/duplicity/duplicity/-/archive/dev/duplicity-dev.tar.gz &&\
 	apk del --purge .build-deps
 
 RUN	addgroup -S app &&\
@@ -21,7 +21,7 @@ RUN	addgroup -S app &&\
 		~app/.gnupg && \
 	chown -R app:app ~app 
 
-COPY *.py backup.yml requirements.txt /opt/app/
+COPY src/*.py backup.yml requirements.txt /opt/app/
 RUN pip install -r /opt/app/requirements.txt&& \
 	chown -R root:root /opt/app && \
 	find /opt/app -type d -exec chmod 755 {} + && \
