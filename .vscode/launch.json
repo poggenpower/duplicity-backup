@@ -4,7 +4,19 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
+        {
+            "name": "Python Debugger: Current File with Arguments",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "duplicity-photo",
+                "photo-weekly/*.sigtar.gpg", 
+                "--dry-run"
+            ],
+            "envFile": "${workspaceFolder}/.secrets"
+        },
         {
             "name": "Python: Remote Attach",
             "type": "python",
@@ -23,7 +35,6 @@
             // python -m debugpy --listen 5678 --wait-for-client ./backup.py
             // python -m pip install debugpy
             // kubectl -n duplicity-backup --address 0.0.0.0 port-forward pods/duplicity-photo-weekly-debug 5678:5678
-
         },
         {
             "name": "Python: backup.py",
@@ -37,7 +48,8 @@
             },
             "envFile": "${workspaceFolder}/tmp/.env",
             "args": [
-                "--config", "test/backup.yaml",
+                "--config",
+                "test/backup.yaml",
                 // "./tmp/conf.yaml",
                 // "--command",
                 // "collection-status",
