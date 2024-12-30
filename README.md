@@ -1,5 +1,5 @@
 # duplicity-backup
-A small, easy-to-use wrapper to assist in automating backups done with [duplicity](http://duplicity.nongnu.org/).
+A small, easy-to-use wrapper to assist in automating backups done with [duplicity](http://duplicity.us/).
 With special use case Backup of photo collection or other tye pf archives.
 
 ## Features
@@ -25,7 +25,7 @@ If there are a certain amount of incremental backups an full backup is made for 
 see `exampel/k8s/` for a kubernetes deployment.
 
 # Setup Example Docker 
-Setup should be very straightforward as long as you have a working (passwordless) SSH connection from the source to destination. If you need to go over the Internet, I highly recommend using a VPN to tunnel your traffic.
+Setup should be very straightforward as long as you have a working (passwordless) SSH connection from the source to destination. 
 
 Here's a "loose" guide on how to set up your system:
 
@@ -50,6 +50,21 @@ Here's a "loose" guide on how to set up your system:
 	ssh-copy-id user@remote.domain.tld
 	```
 	Only required if backup via ssh. 
+
+3. configure duplicity-backup
+
+	use `backup.yaml` as a template. it should have some comments to help with configuration. 
+
+	beside different backup flavours "full", "inc", "backup" (automatically to full then inc),
+	following duplicity commands are also supported (see duplicity docs for details):
+	- restore
+	- verify
+	- collection-status
+	- remove
+	- cleanup
+	- list-current-files
+
+	If you use S3 as backend you should configure AWS_REGION and AWS_ENDPOIN_URL or other via ENV Var instead of using e.g. `--s3-region` in the `args` section of the config file. This will ensure that all duplicity commands receive the same parameters. 
 
 3. run docker container:
 	```sh

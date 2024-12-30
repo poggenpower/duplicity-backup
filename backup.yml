@@ -1,11 +1,33 @@
 ---
-command: full
+## any setting here can be also set by ENV var. 
+## e.g. setting the password for email notification use
+## `DUPBACK_EMAIL__PASSWORD` as ENV var. 
+## "DUPBACK_" is the general prefix to filter relevant ENV Vars
+## Hirarchies are separated by "__" (two underscores)
+
+command: backup 
+## args are applied to the main command only.
+## parameter like --s3-region are needed by other duplicity commands like `remove-all-but-n-full` too
+## therefor use ENV Vars like AWS_REGION to make this parameter available globally
 # args:
 #   - "--rsync-options="--bwlimit=4096""
 #   - "--allow-source-mismatch"
+#   - "--skip-if-no-change" # this is recommended, if you have directories that change rarely. This avoid empty incrementals.
+
+do_full_after: 3 
+keep_n_full: 2
 
 gpg:
   fingerprint: SOMEKEY123GOES123HERE
+  # add keys via config. (you still need to specify the fingerpriont.)
+  # public_key_pem: |
+  #   -----BEGIN PGP PUBLIC KEY BLOCK-----
+  #   ....
+  #   -----END PGP PUBLIC KEY BLOCK-----
+  # private_key_pem: |
+  #   -----BEGIN PGP PRIVATE KEY BLOCK-----
+  #   ....
+  #   -----END PGP PRIVATE KEY BLOCK-----
 
 source:
   # /baseDir/directory
@@ -37,8 +59,24 @@ directories:
   - "Shows/Ergo Proxy" # example with space
   - "Shows/My Hero Academia" # example with space
 
+## instead of listing all directories, which gets its own backup,
+## duplicity-backup can create a backup for each subdirectory automatically. 
+## usefull if your photocollection get a new folder e.g. each year. 
+# directories: []
+# all_subdirectories: true
+
+
   # Forward-slashes ("/") are treated like paths.
   # This means you can, for example, backup only a subdirectory.
   # The parent directory structure will be created in
   # case you add subdirectories of the same parent structure later.
   # - path/to/some/subfolder
+
+## send email notoficatoins
+email:
+  server: smtp.example.com
+  sender: backup@example.com
+  recipient: admin@example.com
+  user: smtp-auth@example.com
+  password: **********
+  ## keep in mind any setting can be overwritten by ENV var. E.g. for password use: DUPBACK_EMAIL__PASSWORD

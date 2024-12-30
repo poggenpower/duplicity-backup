@@ -1,4 +1,4 @@
-FROM docker.io/python:3.11-alpine
+FROM docker.io/python:3.12-alpine
 
 RUN apk fix && \
 	apk add --no-cache \
@@ -11,7 +11,7 @@ RUN apk fix && \
 RUN pip install setuptools_scm boto3 python-gettext &&\
 	apk add gettext &&\
 	apk add -t .build-deps linux-headers python3-dev librsync-dev gcc musl-dev git &&\
-	pip install https://gitlab.com/duplicity/duplicity/-/archive/issue831/duplicity-issue831.tar.gz &&\
+	pip install https://gitlab.com/duplicity/duplicity/-/archive/rel.3.0.3.2/duplicity-rel.3.0.3.2.tar.bz2 &&\
 	apk del --purge .build-deps
 
 RUN	addgroup -S app &&\
