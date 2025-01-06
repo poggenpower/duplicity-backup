@@ -1,0 +1,31 @@
+FROM ubuntu
+
+RUN apt update && \
+    apt install -y \
+        build-essential \
+        gcc-14 \
+        intltool \
+        lftp \
+        librsync-dev \
+        libffi-dev \
+        libssl-dev \
+        openssl \
+        par2 \
+        python3-dev \
+        python3-pip \
+        python3-venv \
+        python3 \
+        rclone \
+        rsync \
+        rdiff \
+        tzdata
+
+RUN apt purge -y gcc-13 && \
+    update-alternatives --install /usr/bin/g++ g++ /usr/bin/gcc-14 14 && \
+    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 14
+
+# RUN pip3 install https://gitlab.com/duplicity/duplicity/-/archive/dev/duplicity-dev.tar.bz2 --break --no-binary :all: --no-cache-dir
+
+USER root
+WORKDIR /root
+CMD ["/bin/bash"]
