@@ -31,9 +31,6 @@ logging.getLogger().handlers[0].setFormatter(
 )  # reconfigure the root logger
 
 
-SSH_BASED_PROTOS = ["ssh", "rsync"]
-
-
 class ConfigurationIssue(Exception):
     pass
 
@@ -155,6 +152,12 @@ class ConfigParser:
             type=bool,
             default=False,
             help="all 1st level subdirectories of `source-basedir` get separatly backuped. `directories are ignored`",
+        )
+        parser.add_argument(
+            "--k8s-local-storage-discovery",
+            type=bool,
+            default=False,
+            help="discover local-storage paths from k8s PersistentVolumes and add them to `directories`. Requires access to k8s cluster (in-cluster or via kubeconfig).",
         )
         parser.add_argument(
             "--no-default-config",
@@ -294,6 +297,9 @@ class ConfigParser:
         return True, ""
 
     def _validate_sourcedir(self) -> Tuple[bool, str]:
+        node = os.getenv(
+            "K8S_NODE_NAME", None
+        )  # used for k8s local-storage discovery, see. README.md
         if self._cfg_d.all_subdirectories:
             # replacing directories with all subdirectories of source base dir
             rootdir = f"{self._cfg_d.source.baseDir}"
@@ -304,6 +310,17 @@ class ConfigParser:
                     if x.is_dir() and not x.name.startswith((".", "@"))
                 ]
                 self._cfg_d.update(subdirs, "directories")
+        elif self._cfg_d.k8s_local_storage_discovery and node is not None:
+            from k8s_local_storage_discovery import K8sLocalStorageDiscovery
+            local_storage = K8sLocalStorageDiscovery()
+
+            directories = local_storage.get_local_storage_dirs_for_node(node)
+            source, directories = local_storage.discover_common_path(directories)
+            if len(directories) > 0:
+                if self._cfg_d.source.baseDir == "":
+                    self._cfg_d.source.baseDir = source
+                self._cfg_d.update(directories, "directories")
+                logging.info(f"Discovered local-storage directories: {directories}")
 
         if len(self._cfg_d.directories) <= 0:
             return False, "No Source directories found"
@@ -385,28 +402,6 @@ for item in config.directories:
     if not pathlib.Path(duplicitySource):
         sys.stderr.write(f"Couldn't find source {duplicitySource}. Skipping.\n")
         continue
-
-    # Run some preps if SSH based connection
-    proto = config.dest.uri.partition(":")[0]
-    if proto in SSH_BASED_PROTOS:
-        ssh = sh.ssh.bake(p=config.dest.port, l=config.dest.user)
-        try:
-            ssh(
-                "-o",
-                "UpdateHostKeys=yes",
-                "-o",
-                "StrictHostKeyChecking=accept-new",
-                config.dest.host,
-                "mkdir",
-                "-p",
-                f"{duplicityDest}",
-            )
-        except Exception as e:
-            msg = f"You must setup and test SSH ahead of time. See below for errors:\n{e}\n"
-            logging.error(msg)
-            rr.add_error(msg)
-            rr.parse_and_send()
-            sys.exit(1)
 
     if config.do_full_after > 0 and config.command in ["inc", "backup", ""]:
         if get_no_of_increments(duplicityDest) >= config.do_full_after:

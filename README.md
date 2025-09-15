@@ -20,9 +20,48 @@ duplicity-backup will create one backup per year if if `--source.Basedir` is poi
 Incremental are only created if there are changes for that year, which should not be the case for most of the past years, but they get a backup if changed, so no manual housekeeping is required. 
 If there are a certain amount of incremental backups an full backup is made for this specific year. A configurable amount of full backups is kept per year.
 
-# Setup Example Kubernets
+# Setup Example Kubernets e.g. for local storage backup
 
+## Deployment
 see `exampel/k8s/` for a kubernetes deployment.
+
+## Backup of local storage class PVs
+
+Run with `--k8s-local-storage-discovery` to discover all folders for bound local storage PVs. 
+The most common path will be replacesd with `--source.Basedir`, so mount hostpath accordingly. 
+
+Create service account and roles as shown in `examples/k8s/k8s_localstrage_backup.yaml`
+Create a cronjob as for other backups per node which is holding local storage (yes, you need to maintain this manually.)
+
+Make sure you set the env var with the node name:
+```
+    env:
+      - name: K8S_NODE_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: spec.nodeName
+```
+and run with a Service Account, whith appropriate permissions
+```
+      serviceAccountName: backup-config-modifier
+```
+if you are not running all your containers under the same UID, you must run as `root` to have access to all files from different users:
+```
+        securityContext:
+          runAsUser: 0
+```
+mount the path from the host where all local-storage classes drops their files:
+```
+        volumeMounts:
+        - name: longhorn-local-storage
+          mountPath: /local-storage
+      volumes:
+      - name: longhorn-local-storage
+        hostPath:
+          path: /var/lib/local-storage
+          type: Directory
+```
+
 
 # Setup Example Docker 
 Setup should be very straightforward as long as you have a working (passwordless) SSH connection from the source to destination. 
@@ -114,3 +153,4 @@ Here's a "loose" guide on how to set up your system:
 	# # weekly backup every week:
 	0 0 * * 1 ~/backup.sh >> ~/backup.log;
 	```
+
