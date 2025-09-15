@@ -1,0 +1,35 @@
+---
+# Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: backup-config-modifier
+  namespace: duplicity-backup
+
+---
+# ClusterRole with necessary permissions
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: configmap-modifier
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["list"]
+
+---
+# ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: backup-config-modifier-binding
+subjects:
+- kind: ServiceAccount
+  name: backup-config-modifier
+  namespace: duplicity-backup
+roleRef:
+  kind: ClusterRole
+  name: configmap-modifier
+  apiGroup: rbac.authorization.k8s.io
+
+
