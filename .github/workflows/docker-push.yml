@@ -72,19 +72,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: list docker image layers
-        run: docker image list 
-
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}'
-  
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'  
 
-      - name: Push Docker image
-        uses: docker/build-push-action@v4.1.1
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+      - name: Push Docker image to registry
+        run: docker push ${{ steps.meta.outputs.tags }}
