@@ -81,4 +81,7 @@ jobs:
           exit-code: '1'  
 
       - name: Push Docker image to registry
-        run: docker push ${{ steps.meta.outputs.tags }}
+        run: |
+          echo "${{ steps.meta.outputs.tags }}" | while read tag; do
+            docker push "$tag"
+          done
