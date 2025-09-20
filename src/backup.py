@@ -362,7 +362,7 @@ def get_no_of_increments(duplicityDest):
         index_stat = dub_json.popitem()[1]
         inc_count = index_stat["json_stat"]["backup_meta"]["no_of_inc"]
     except Exception as e:
-        logging.error(
+        logging.exception(
             f"Can't get backup jsons statistics. Make sure to run duplicity with --jsonstat. Error: {e} at {duplicityDest}"
         )
     time.sleep(0.5)
