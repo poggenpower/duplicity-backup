@@ -20,7 +20,9 @@ class K8sLocalStorageDiscovery:
         try:
             config.load_incluster_config()
             self.storage_class_names = storage_class_names
-            logger.debug(f"Loaded in-cluster Kubernetes configuration, storage classes: {storage_class_names}")
+            logger.debug(
+                f"Loaded in-cluster Kubernetes configuration, storage classes: {storage_class_names}"
+            )
         except config.ConfigException:
             config.load_kube_config()
             logger.exception("Loaded kubeconfig file for Kubernetes configuration")
@@ -61,12 +63,16 @@ class K8sLocalStorageDiscovery:
                 # Check for the "dubdir-skipp-backup" label
                 labels = pv.metadata.labels or {}
                 if "dubdir-skipp-backup" in labels:
-                    logger.info(f"Skipping PersistentVolume {pv.metadata.name} due to 'dubdir-skipp-backup' label.")
+                    logger.info(
+                        f"Skipping PersistentVolume {pv.metadata.name} due to 'dubdir-skipp-backup' label."
+                    )
                     continue  # Skip this PV and move to the next one                path = None
-                if pv.spec.local.path:
+                if pv.spec.local and pv.spec.local.path:
                     path = pv.spec.local.path
                 else:
-                    logger.error(f"PersistentVolume {pv.metadata.name} does not have a local path defined.")
+                    logger.error(
+                        f"PersistentVolume {pv.metadata.name} with storageclass {sc} does not have a local path defined."
+                    )
                     continue  # Skip this PV and move to the next one
                 node_name = None
                 # Discover node affinity from required terms
@@ -107,6 +113,8 @@ class K8sLocalStorageDiscovery:
         )
 
         # Remove the common prefix from each directory
-        dirs_without_prefix = [d[len(common_prefix):].lstrip(os.sep) for d in directories]
+        dirs_without_prefix = [
+            d[len(common_prefix) :].lstrip(os.sep) for d in directories
+        ]
 
         return (common_prefix, dirs_without_prefix)
