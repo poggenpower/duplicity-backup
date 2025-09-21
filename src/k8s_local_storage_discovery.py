@@ -1,5 +1,6 @@
 # Configure logging
 import logging
+from pathlib import Path
 from kubernetes import client, config
 from typing import List, Dict, Any
 
@@ -87,7 +88,13 @@ class K8sLocalStorageDiscovery:
         return node_dirs
 
     @staticmethod
-    def discover_common_path(directories: List[str]) -> tuple[str, List[str]]:
+    def path_exists(root_dir, subdir_name):
+        combined_path = Path(root_dir) / subdir_name
+        return combined_path.exists()
+
+
+    @staticmethod
+    def discover_common_path(directories: List[str], new_root: str | None = None) -> tuple[str, List[str]]:
         """
         Finds the longest common prefix (directory path) among a list of directories.
         Returns the common prefix and the list of directories with the prefix removed.
@@ -112,9 +119,22 @@ class K8sLocalStorageDiscovery:
             else common_prefix
         )
 
+        # test if the new_root + first dir without prefix exists
+        if new_root is not None:
+            test_dir = directories[0][len(common_prefix) :].lstrip(os.sep)
+            while not K8sLocalStorageDiscovery.path_exists(new_root, test_dir) or common_prefix == "/":
+                logger.warning(f"New root {new_root} + {test_dir} does not exist, adjusting common prefix")
+                # Move one directory up in the common prefix
+                common_prefix = str(Path(common_prefix).parent)
+                test_dir = directories[0][len(common_prefix) :].lstrip(os.sep)
+                logger.info(f"Adjusted common prefix to {common_prefix}, new test dir {test_dir}")
+                
+
         # Remove the common prefix from each directory
         dirs_without_prefix = [
             d[len(common_prefix) :].lstrip(os.sep) for d in directories
         ]
+
+
 
         return (common_prefix, dirs_without_prefix)
