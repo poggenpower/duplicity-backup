@@ -322,7 +322,7 @@ class ConfigParser:
             local_storage = K8sLocalStorageDiscovery(self._cfg_d.k8s_local_storage_discovery.storage_class_names)
 
             directories = local_storage.get_local_storage_dirs_for_node(node)
-            source, directories = local_storage.discover_common_path(directories)
+            source, directories = local_storage.discover_common_path(directories, self._cfg_d.source.baseDir)
             if len(directories) > 0:
                 if self._cfg_d.source.baseDir == "":
                     self._cfg_d.source.baseDir = source
