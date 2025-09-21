@@ -12,17 +12,18 @@ logger = logging.getLogger(__name__)
 
 
 class K8sLocalStorageDiscovery:
-    def __init__(self):
+    def __init__(self, storage_class_names: List[str] = ["local-storage"]):
         """
         Initializes the Kubernetes CoreV1Api client.
         Tries to load in-cluster configuration, falls back to kubeconfig if needed.
         """
         try:
             config.load_incluster_config()
-            logger.debug("Loaded in-cluster Kubernetes configuration")
+            self.storage_class_names = storage_class_names
+            logger.debug(f"Loaded in-cluster Kubernetes configuration, storage classes: {storage_class_names}")
         except config.ConfigException:
             config.load_kube_config()
-            logger.info("Loaded kubeconfig file for Kubernetes configuration")
+            logger.exception("Loaded kubeconfig file for Kubernetes configuration")
         self.v1 = client.CoreV1Api()
 
     def get_local_storage_dirs_for_node(self, node: str) -> List[str]:
@@ -56,10 +57,17 @@ class K8sLocalStorageDiscovery:
         node_dirs = {}
         for pv in pv_list.items:
             sc = pv.spec.storage_class_name
-            if sc == "local-storage":
-                path = None
-                if pv.spec.local and pv.spec.local.path:
+            if sc in self.storage_class_names and pv.status.phase == "Bound":
+                # Check for the "dubdir-skipp-backup" label
+                labels = pv.metadata.labels or {}
+                if "dubdir-skipp-backup" in labels:
+                    logger.info(f"Skipping PersistentVolume {pv.metadata.name} due to 'dubdir-skipp-backup' label.")
+                    continue  # Skip this PV and move to the next one                path = None
+                if pv.spec.local.path:
                     path = pv.spec.local.path
+                else:
+                    logger.error(f"PersistentVolume {pv.metadata.name} does not have a local path defined.")
+                    continue  # Skip this PV and move to the next one
                 node_name = None
                 # Discover node affinity from required terms
                 if pv.spec.node_affinity and pv.spec.node_affinity.required:
