@@ -51,7 +51,7 @@ class K8sLocalStorageDiscovery:
             Dict[str, List[str]]: Dictionary mapping node names to lists of directory paths.
         """
         logger.info(
-            "Listing all PersistentVolumes with StorageClass 'local-storage' and grouping by node"
+            f"Listing all PersistentVolumes with StorageClass {self.storage_class_names} and grouping by node"
         )
         pv_list = self.v1.list_persistent_volume()
         node_dirs = {}
