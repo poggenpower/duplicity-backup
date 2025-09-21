@@ -317,9 +317,9 @@ class ConfigParser:
                     if x.is_dir() and not x.name.startswith((".", "@"))
                 ]
                 self._cfg_d.update(subdirs, "directories")
-        elif self._cfg_d.k8s_local_storage_discovery and node is not None:
+        elif self._cfg_d.k8s_local_storage_discovery.enabled and node is not None:
             from k8s_local_storage_discovery import K8sLocalStorageDiscovery
-            local_storage = K8sLocalStorageDiscovery()
+            local_storage = K8sLocalStorageDiscovery(self._cfg_d.k8s_local_storage_discovery.storage_class_names)
 
             directories = local_storage.get_local_storage_dirs_for_node(node)
             source, directories = local_storage.discover_common_path(directories)
