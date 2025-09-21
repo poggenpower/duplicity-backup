@@ -154,7 +154,7 @@ class ConfigParser:
             help="all 1st level subdirectories of `source-basedir` get separatly backuped. `directories are ignored`",
         )
         parser.add_argument(
-            "--k8s-local-storage-discovery",
+            "--k8s-local-storage-discovery.enabled",
             type=bool,
             default=False,
             help="discover local-storage paths from k8s PersistentVolumes and add them to `directories`. Requires access to k8s cluster (in-cluster or via kubeconfig).",
