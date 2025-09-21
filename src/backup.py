@@ -160,6 +160,13 @@ class ConfigParser:
             help="discover local-storage paths from k8s PersistentVolumes and add them to `directories`. Requires access to k8s cluster (in-cluster or via kubeconfig).",
         )
         parser.add_argument(
+            "--k8s-local-storage-discovery.storage-class-names",
+            type=List[str],
+            default=["local-storage"],
+            help="List of storage class names to consider for k8s local-storage discovery. Default: ['local-storage']",
+        )
+            
+        parser.add_argument(
             "--no-default-config",
             action="store_true",
             required=False,
