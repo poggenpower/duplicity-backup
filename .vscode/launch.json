@@ -4,7 +4,13 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-        {"name":"Python Debugger: Current File","type":"debugpy","request":"launch","program":"${file}","console":"integratedTerminal"},
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        },
         {
             "name": "Python Debugger: backup.py with Arguments",
             "type": "debugpy",
@@ -13,7 +19,7 @@
             "console": "integratedTerminal",
             "args": [
                 "duplicity-photo",
-                "photo-weekly/*.sigtar.gpg", 
+                "photo-weekly/*.sigtar.gpg",
                 "--dry-run"
             ],
             "envFile": "${workspaceFolder}/.secrets"
@@ -63,6 +69,17 @@
                 // "['--log-file', '/tmp/dpu.log', '--show-changes-in-set', '0' ]"
                 // "['1','--force']",
             ]
-        }
+        },
+        {
+            "name": "Debug k8s_local_storage_discovery",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "src/k8s_local_storage_discovery.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "KUBECONFIG": "/workspaces/duplicity-backup/example/k8s/kubeconfig.yaml",
+            },
+        },
     ]
 }

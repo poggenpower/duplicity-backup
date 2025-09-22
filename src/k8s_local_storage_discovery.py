@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 from kubernetes import client, config
 from typing import List, Dict, Any
+from pprint import pprint as print
 
 logging.basicConfig(
     level=logging.INFO,
@@ -20,13 +21,13 @@ class K8sLocalStorageDiscovery:
         """
         try:
             config.load_incluster_config()
-            self.storage_class_names = storage_class_names
             logger.debug(
                 f"Loaded in-cluster Kubernetes configuration, storage classes: {storage_class_names}"
             )
         except config.ConfigException:
             config.load_kube_config()
             logger.exception("Loaded kubeconfig file for Kubernetes configuration")
+        self.storage_class_names = storage_class_names
         self.v1 = client.CoreV1Api()
 
     def get_local_storage_dirs_for_node(self, node: str) -> List[str]:
@@ -44,6 +45,55 @@ class K8sLocalStorageDiscovery:
         node_dirs = all_dirs.get(node, [])
         logger.info(f"Directories for node {node}: {node_dirs}")
         return node_dirs
+    
+    def _skip_pv_by_pvc_label(self, pv: client.V1PersistentVolume) -> bool:
+        """
+        Helper function to determine if a PersistentVolume should be skipped based on
+        a label on its associated PersistentVolumeClaim.
+        This is fail open, if something went wrong, we do not skip the PV.
+
+        Args:
+            pv: The V1PersistentVolume object to check.
+
+        Returns:
+            bool: True if the PV should be skipped, False otherwise.
+        """
+        if not pv.spec or not pv.spec.claim_ref or not pv.metadata:
+            return False  # No claimRef, cannot check PVC label
+        
+        claim_ref = pv.spec.claim_ref
+        if not claim_ref:
+            logging.warning(
+                f"PersistentVolume {pv.metadata.name} is in 'Bound' phase but has no claimRef. Skipping."
+            )
+            return True
+
+        try:
+            pvc: client.V1PersistentVolumeClaim = self.v1.read_namespaced_persistent_volume_claim(
+                name=claim_ref.name,
+                namespace=claim_ref.namespace
+            ) # type: ignore
+            if not pvc or not pvc.metadata:
+                logging.warning(
+                    f"Could not retrieve PVC {claim_ref.namespace}/{claim_ref.name} for PV {pv.metadata.name}. Skipping."
+                )
+                return False
+            labels = pvc.metadata.labels or {}
+            if "dupdir-skip-backup" in labels:
+                logging.info(
+                    f"Skipping PersistentVolume {pv.metadata.name} because its associated PVC "
+                    f"'{pvc.metadata.namespace}/{pvc.metadata.name}' has the 'dupdir-skip-backup' label."
+                )
+                return True
+        except client.ApiException as e:
+            logging.error(
+                f"Failed to retrieve PVC {claim_ref.namespace}/{claim_ref.name} for PV {pv.metadata.name}: {e}"
+            )
+            return False # On error, do not skip the PV
+            
+        return False
+
+
 
     def list_local_storage_dirs_by_node(self) -> Dict[str, List[str]]:
         """
@@ -67,12 +117,15 @@ class K8sLocalStorageDiscovery:
                     logger.info(
                         f"Skipping PersistentVolume {pv.metadata.name} due to 'dubdir-skipp-backup' label."
                     )
-                    continue  # Skip this PV and move to the next one                path = None
+                    continue  # Skip this PV and move to the next one
+                if self._skip_pv_by_pvc_label(pv):
+                    continue  # Skip this PV and move to the next one
+                path = None
                 if pv.spec.local and pv.spec.local.path:
                     path = pv.spec.local.path
                 else:
-                    logger.error(
-                        f"PersistentVolume {pv.metadata.name} with storageclass {sc} does not have a local path defined."
+                    logger.warning(
+                        f"PersistentVolume {pv.metadata.name} with storageclass {sc} does not have a local path defined. skipping"
                     )
                     continue  # Skip this PV and move to the next one
                 node_name = None
@@ -138,3 +191,10 @@ class K8sLocalStorageDiscovery:
 
 
         return (common_prefix, dirs_without_prefix)
+
+if __name__ == "__main__":
+    # Example usage
+    k8s_discovery = K8sLocalStorageDiscovery(storage_class_names=["local-storage", "local-storage-auto"])
+    node_name = "k8s-node01e"  # Replace with your actual node name
+    dirs = k8s_discovery.get_local_storage_dirs_for_node(node_name)
+    print(f"Directories for node {node_name}: {dirs}")
