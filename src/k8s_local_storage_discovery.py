@@ -63,7 +63,7 @@ class K8sLocalStorageDiscovery:
             if sc in self.storage_class_names and pv.status.phase == "Bound":
                 # Check for the "dubdir-skipp-backup" label
                 labels = pv.metadata.labels or {}
-                if "dubdir-skipp-backup" in labels:
+                if "dupdir-skip-backup" in labels:
                     logger.info(
                         f"Skipping PersistentVolume {pv.metadata.name} due to 'dubdir-skipp-backup' label."
                     )
