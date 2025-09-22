@@ -355,6 +355,7 @@ def get_no_of_increments(duplicityDest):
     pattern = re.compile(r"\{(?:[^{}]|(?R))*\}")
     inc_count = 0
     try:
+        dup_out = "No output"
         dup_out = duplicity(
             [
                 "collection-status",
@@ -370,7 +371,7 @@ def get_no_of_increments(duplicityDest):
         inc_count = index_stat["json_stat"]["backup_meta"]["no_of_inc"]
     except Exception as e:
         logging.exception(
-            f"Can't get backup jsons statistics. Make sure to run duplicity with --jsonstat. Error: {e} at {duplicityDest}"
+            f"Can't get backup jsons statistics. Make sure to run duplicity with --jsonstat. Error: {e} at {duplicityDest}. Output: {dup_out}"
         )
     time.sleep(0.5)
     return inc_count
