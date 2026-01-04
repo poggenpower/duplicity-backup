@@ -24,7 +24,7 @@ class K8sLocalStorageDiscovery:
             logger.debug(
                 f"Loaded in-cluster Kubernetes configuration, storage classes: {storage_class_names}"
             )
-        except config.ConfigException:
+        except (config.ConfigException):
             config.load_kube_config()
             logger.exception("Loaded kubeconfig file for Kubernetes configuration")
         self.storage_class_names = storage_class_names
@@ -93,11 +93,60 @@ class K8sLocalStorageDiscovery:
             
         return False
 
+    def get_node_by_pvc(self, pvc_name: str) -> str | None:
+        """
+        Retrieves the node name where the pod of the given PersistentVolumeClaim is running.
+
+        Args:
+            pvc_name (str): The name of the PersistentVolumeClaim.
+        Returns:
+            str | None: The name of the node if found, otherwise None.
+        """
+
+        def _get_pvc2node_cache(self, pods) -> Dict[str, str]:
+            pvc2node = {}
+            for pod in pods.items:
+                try:
+                    if not pod.spec:
+                        continue
+                    # Check all volumes in the pod for a PVC matching the claim name
+                    volumes = pod.spec.volumes or []
+                    found = False
+                    for vol in volumes:
+                        pvc_vol = getattr(vol, "persistent_volume_claim", None)
+                        if not pvc_vol:
+                            continue
+                        # In the Python Kubernetes client the attribute is `claim_name`
+                        claim_name = getattr(pvc_vol, "claim_name", None)
+                        node_name = getattr(pod.spec, "node_name", None)
+                        pod_name = pod.metadata.name if pod.metadata else "<unknown>"
+                        if node_name:
+                            logger.info(f"PVC {pvc_name} is used by pod {pod_name} on node {node_name}")
+                            pvc2node[claim_name] = node_name
+                        else:
+                            logger.info(f"PVC {pvc_name} is used by pod {pod_name} but the pod is not scheduled to a node yet")
+                except Exception as e:
+                    logger.error(f"Error while inspecting pod {getattr(pod.metadata, 'name', '<unknown>')}: {e}")
+                    continue
+            return pvc2node
+
+        logger.debug(f"Retrieving node for PVC: {pvc_name}")
+        # The API server does not support a field selector for spec.volumes.persistentVolumeClaim.claimName,
+        # so retrieve all pods and filter client-side.
+        if not hasattr(self, "pods") or not self.pods:
+            self.pods = self.v1.list_pod_for_all_namespaces()
+        if not hasattr(self, "pvc2node") or not self.pvc2node:
+            self.pvc2node = _get_pvc2node_cache(self, self.pods)
+        node_name = self.pvc2node.get(pvc_name)
+        if node_name:
+            return node_name
+        logger.warning(f"No pod found using PVC {pvc_name}")
+        return None
 
 
     def list_local_storage_dirs_by_node(self) -> Dict[str, List[str]]:
         """
-        Lists all PersistentVolumes with StorageClass 'local-storage', extracts their paths,
+        Lists all PersistentVolumes with StorageClass configured storage classes, extracts their paths,
         and groups them by node based on node affinity.
 
         Returns:
@@ -123,20 +172,30 @@ class K8sLocalStorageDiscovery:
                 path = None
                 if pv.spec.local and pv.spec.local.path:
                     path = pv.spec.local.path
+                elif pv.spec.host_path and pv.spec.host_path.path:
+                    path = pv.spec.host_path.path
                 else:
                     logger.warning(
                         f"PersistentVolume {pv.metadata.name} with storageclass {sc} does not have a local path defined. skipping"
                     )
                     continue  # Skip this PV and move to the next one
-                node_name = None
-                # Discover node affinity from required terms
-                if pv.spec.node_affinity and pv.spec.node_affinity.required:
-                    for term in pv.spec.node_affinity.required.node_selector_terms:
-                        for expr in term.match_expressions:
-                            if expr.key == "kubernetes.io/hostname" and expr.values:
-                                node_name = expr.values[0]
+                node_name = self.get_node_by_pvc(pv.spec.claim_ref.name) if pv.spec.claim_ref else None
+
+                if not node_name:
+                    # Discover node affinity from required terms
+                    if pv.spec.node_affinity and pv.spec.node_affinity.required:
+                        for term in pv.spec.node_affinity.required.node_selector_terms:
+                            for expr in term.match_expressions:
+                                if expr.key == "kubernetes.io/hostname" and expr.values:
+                                    node_name = expr.values[0]
+                                    logger.debug(
+                                        f"Discovered node affinity for PV {pv.metadata.name}: {node_name}")
                 if path and node_name:
                     node_dirs.setdefault(node_name, []).append(path)
+                else:
+                    logger.warning(
+                        f"Could not determine path or node for PersistentVolume {pv.metadata.name}. Skipping."
+                    )
         logger.info(f"Directories grouped by node: {node_dirs}")
         return node_dirs
 
@@ -198,3 +257,5 @@ if __name__ == "__main__":
     node_name = "k8s-node01e"  # Replace with your actual node name
     dirs = k8s_discovery.get_local_storage_dirs_for_node(node_name)
     print(f"Directories for node {node_name}: {dirs}")
+    node = k8s_discovery.get_node_by_pvc("claim0")
+    print(f"Node for PVC 'claim0': {node}")
