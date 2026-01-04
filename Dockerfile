@@ -37,8 +37,11 @@ RUN pip install setuptools_scm python-gettext && \
 COPY requirements* /opt/app/
 
 # Install the application requirements into a separate wheel directory
-RUN pip wheel --wheel-dir=/opt/wheels -r /opt/duplicity-basic-requirements.txt -r /opt/app/requirements-k8s.txt
-
+RUN pip wheel --wheel-dir=/opt/wheels -r /opt/duplicity-basic-requirements.txt -r /opt/app/requirements-k8s.txt && \
+    # hack to update urllib3 to a more recent version due to security issues
+    # remove if dependecy of kubernetes is updated
+    rm /opt/wheels/urllib3-*.whl && \
+    pip wheel --wheel-dir=/opt/wheels urllib3
 # Stage 2: The Final Production Stage
 
 FROM docker.io/python:3.12-alpine
