@@ -69,7 +69,6 @@ jobs:
           load: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          no-cache: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -80,6 +79,8 @@ jobs:
           format: 'table'
           severity: 'CRITICAL,HIGH'
           exit-code: '1'  
+          # ignore vulnerabilities in setuptools _vendor directory
+          skip-dirs: '/usr/local/lib/python3.12/site-packages/setuptools/_vendor'
 
       - name: Push Docker image to registry
         run: |
