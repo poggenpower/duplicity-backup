@@ -485,6 +485,7 @@ if config.log_level:
     logging.getLogger().setLevel(config.log_level)
 
 for item in config.directories:
+    force_full = False
     duplicitySource = os.path.join(config.source.baseDir, item)
     duplicityDest = f"{config.dest.uri}{os.path.join(config.dest.baseDir, item)}"
 
@@ -494,12 +495,13 @@ for item in config.directories:
 
     if config.do_full_after > 0 and config.command in ["inc", "backup", ""]:
         if get_no_of_increments(duplicityDest) >= config.do_full_after:
-            config.command = "full"
+            force_full = True
+            logging.info(f"Switching to full backup for {duplicitySource} -> {duplicityDest}")
 
     duplicity_args = []
     skip_dest = skip_source = False
-    if "full" == config.command:
-        duplicity_args.append(config.command)
+    if "full" == config.command or force_full:
+        duplicity_args.append("full")
     elif config.command in ["restore", "verify"]:
         duplicityDest, duplicitySource = duplicitySource, duplicityDest
         duplicity_args.append(config.command)
