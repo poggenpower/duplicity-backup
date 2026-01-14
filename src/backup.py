@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
+import collections
 import json
+import subprocess
 import sys
 import os
 import pathlib
 import time
-from sh import gpg, duplicity  # type: ignore
-import sh
 from jsonargparse import ArgumentParser, ActionConfigFile, Namespace
 from typing import Callable, List, Tuple
 import textwrap
@@ -17,7 +17,7 @@ import logging
 import logging.handlers
 
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 logFormatter = logging.Formatter(
     "%(asctime)s [%(filename)s:%(lineno)s - %(funcName)20s() ] [%(levelname)-5.5s]  %(message)s"
@@ -42,12 +42,13 @@ class ConfigParser:
             default_config_files=["/opt/backup.yml"],
             env_prefix="DUPBACK",
             default_env=True,
+            logger=logging.getLogger()
         )
 
         parser.add_argument(
             "--command",
             required=False,
-            default="",
+            default="backup",
             choices=[
                 "full",
                 "backup",
@@ -70,7 +71,7 @@ class ConfigParser:
             default=[],
             help="(Default None) Extra args to duplicity.",
         )
-        parser.add_argument("--config", action=ActionConfigFile)
+        parser.add_argument("--config", action="config")
         parser.add_argument(
             "--title",
             type=str,
@@ -216,43 +217,74 @@ class ConfigParser:
             logging.error(msg)
             return False, msg
         else:
+            gpg_cmd = [
+                "gpg",
+                "--list-keys",
+                "--with-colons",
+                "--with-fingerprint",
+                self._cfg_d.gpg.fingerprint
+            ]
+
             try:
-                public_key_available = self._cfg_d.gpg.fingerprint in gpg(  # type: ignore
-                    "--list-keys",
-                    "--with-colons",
-                    "--with-fingerprint",
-                    self._cfg_d.gpg.fingerprint,
-                )
-            except sh.ErrorReturnCode as sh_err:
-                if b"No public key" in sh_err.stderr:
+                # capture_output=True keeps your terminal clean
+                # text=True handles the decoding automatically
+                result = subprocess.run(gpg_cmd, capture_output=True, text=True, check=True)
+                
+                # If it didn't raise CalledProcessError, the key was found
+                public_key_available = self._cfg_d.gpg.fingerprint in result.stdout
+
+            except subprocess.CalledProcessError as err:
+                # GPG returns non-zero if the key is missing
+                if "No public key" in err.stderr:
                     public_key_available = False
                 else:
-                    raise sh_err
+                    # Re-raise if it's a different error (e.g., config error)
+                    raise err
 
             if not public_key_available:
-                print(
+                logging.info(
                     f"No key found with fingerprint {self._cfg_d.gpg.fingerprint}, try import"
                 )
                 if len(self._cfg_d.gpg.public_key_pem) > 0:
                     try:
-                        gpg("--import", _in=self._cfg_d.gpg.public_key_pem)
-                        gpg(
-                            "--import-ownertrust",
-                            _in=f"{self._cfg_d.gpg.fingerprint}:6:\n",
+                        # Import the public key
+                        subprocess.run(
+                            ["gpg", "--import"],
+                            input=self._cfg_d.gpg.public_key_pem,
+                            text=True, capture_output=True, check=True
                         )
-                        if not self._cfg_d.gpg.fingerprint in gpg(
-                            "--list-keys", "--with-colon", "--with-fingerprint"
-                        ):
-                            msg = f"Wrong key was imported, check fingerprint.\n"
-                            logging.info(gpg("--list-keys"))
-                            logging.info(gpg("--export-ownertrust"))
+                        
+                        # Import ownertrust (requires specific colon format)
+                        subprocess.run(
+                            ["gpg", "--import-ownertrust"],
+                            input=f"{self._cfg_d.gpg.fingerprint}:6:\n",
+                            text=True, capture_output=True, check=True
+                        )
+
+                        # Verify the fingerprint exists in the key list
+                        list_keys = subprocess.run(
+                            ["gpg", "--list-keys", "--with-colons", "--with-fingerprint"],
+                            text=True, capture_output=True, check=True
+                        )
+
+                        if self._cfg_d.gpg.fingerprint not in list_keys.stdout:
+                            msg = "Wrong key was imported, check fingerprint.\n"
+                            
+                            # Log diagnostics using standard subprocess calls
+                            debug_keys = subprocess.run(["gpg", "--list-keys"], text=True, capture_output=True)
+                            debug_trust = subprocess.run(["gpg", "--export-ownertrust"], text=True, capture_output=True)
+                            
+                            logging.info(debug_keys.stdout)
+                            logging.info(debug_trust.stdout)
                             return False, msg
-                        print("Public Key import successful.")
-                    except sh.ErrorReturnCode as sh_err:
+                            
+                        logging.info("Public Key import successful.")
+
+                    except subprocess.CalledProcessError as err:
                         msg = f"""Can't import and trust public key: 
-                            Command: {sh_err.full_cmd}
-                            StdOut: {sh_err.stdout}
-                            StrErr: {sh_err.stderr}\n"""
+                            Command: {' '.join(err.cmd)}
+                            StdOut: {err.stdout}
+                            StdErr: {err.stderr}\n"""
                         return False, msg
                 else:
                     msg = f'No public key to import set "gpg.public_key_pem". Abort.\n'
@@ -260,41 +292,69 @@ class ConfigParser:
 
             if self._cfg_d.gpg.private_key_pem:
                 try:
-                    private_key_imported = self._cfg_d.gpg.fingerprint in gpg(
-                        "--list-secret-keys",
-                        "--with-colons",
-                        "--with-fingerprint",
-                        self._cfg_d.gpg.fingerprint,
+                    # Search specifically for the fingerprint in secret keys
+                    result = subprocess.run(
+                        [
+                            "gpg", 
+                            "--list-secret-keys", 
+                            "--with-colons", 
+                            "--with-fingerprint", 
+                            self._cfg_d.gpg.fingerprint
+                        ],
+                        capture_output=True,
+                        text=True,
+                        check=True
                     )
-                except sh.ErrorReturnCode as sh_err:
+                    # If the command succeeds, check if the fingerprint is in the output
+                    private_key_imported = self._cfg_d.gpg.fingerprint in result.stdout
+                except (subprocess.CalledProcessError, FileNotFoundError):
+                    # GPG returns non-zero if the key is not found
                     private_key_imported = False
 
                 if not private_key_imported:
                     try:
-                        gpg(
-                            "--import",
-                            "--batch",
-                            "--with-colons",
-                            _in=self._cfg_d.gpg.private_key_pem,
+                        # Import the private key using the PEM data as input
+                        subprocess.run(
+                            ["gpg", "--import", "--batch", "--with-colons"],
+                            input=self._cfg_d.gpg.private_key_pem,
+                            text=True,
+                            capture_output=True,
+                            check=True
                         )
-                        if not self._cfg_d.gpg.fingerprint in gpg(
-                            "--list-secret-keys", "--with-colon", "--with-fingerprint"
-                        ):
-                            sys.stderr.write(
-                                f"Wrong key was imported, check fingerprint.\n"
+
+                        # Verify the import by listing secret keys
+                        list_secret = subprocess.run(
+                            ["gpg", "--list-secret-keys", "--with-colons", "--with-fingerprint"],
+                            text=True,
+                            capture_output=True,
+                            check=True
+                        )
+
+                        if self._cfg_d.gpg.fingerprint not in list_secret.stdout:
+                            sys.stderr.write("Wrong key was imported, check fingerprint.\n")
+                            
+                            # Log diagnostics
+                            debug_secret = subprocess.run(
+                                ["gpg", "--list-secret-keys"], 
+                                text=True, 
+                                capture_output=True
                             )
-                            print(gpg("--list-secret-keys"))
+                            print(debug_secret.stdout)
+
                             if not os.getenv("PASSPHRASE"):
                                 print(
                                     "If your private key is encrypted, ensure env var 'PASSPHRASE' is set and valid."
                                 )
                             sys.exit(1)
-                        print("Privat Key import successful.")
-                    except sh.ErrorReturnCode as sh_err:
+                            
+                        print("Private Key import successful.")
+
+                    except subprocess.CalledProcessError as err:
+                        # Accessing the failed command, stdout, and stderr from the error object
                         msg = f"""Can't import privat key: 
-                            Command: {sh_err.full_cmd}
-                            StdOut: {sh_err.stdout}
-                            StrErr: {sh_err.stderr}\n"""
+                            Command: {' '.join(err.cmd)}
+                            StdOut: {err.stdout}
+                            StrErr: {err.stderr}\n"""
                         return False, msg
             return True, ""
 
@@ -354,25 +414,46 @@ class ConfigParser:
 def get_no_of_increments(duplicityDest):
     pattern = re.compile(r"\{(?:[^{}]|(?R))*\}")
     inc_count = 0
+    dup_out = "No output"
     try:
-        dup_out = "No output"
-        dup_out = duplicity(
-            [
-                "collection-status",
-                duplicityDest,
-                "--show-changes-in-set",
-                "0",
-                "--jsonstat",
-            ]
+        # Build the command list
+        cmd = [
+            "duplicity",
+            "collection-status",
+            duplicityDest,
+            "--show-changes-in-set",
+            "0",
+            "--jsonstat",
+        ]
+        
+        # Execute and capture output
+        result = subprocess.run(
+            cmd, 
+            capture_output=True, 
+            text=True, 
+            check=True
         )
-        dub_jsons = pattern.findall(dup_out)[0]
-        dub_json = json.loads(dub_jsons)
-        index_stat = dub_json.popitem()[1]
-        inc_count = index_stat["json_stat"]["backup_meta"]["no_of_inc"]
+        
+        dup_out = result.stdout
+        
+        # Your existing parsing logic
+        match = pattern.findall(dup_out)
+        if match:
+            dub_jsons = match[0]
+            dub_json = json.loads(dub_jsons)
+            index_stat = dub_json.popitem()[1]
+            inc_count = index_stat["json_stat"]["backup_meta"]["no_of_inc"]
+            
+    except subprocess.CalledProcessError as e:
+        logging.exception(
+            f"Duplicity command failed. Exit code: {e.returncode}. "
+            f"Error: {e.stderr}. Output: {e.stdout}"
+        )
     except Exception as e:
         logging.exception(
-            f"Can't get backup jsons statistics. Make sure to run duplicity with --jsonstat. Error: {e} at {duplicityDest}. Output: {dup_out}"
+            f"Can't get backup jsons statistics. Error: {e} at {duplicityDest}. Output: {dup_out}"
         )
+        
     time.sleep(0.5)
     return inc_count
 
@@ -419,15 +500,10 @@ for item in config.directories:
     skip_dest = skip_source = False
     if "full" == config.command:
         duplicity_args.append(config.command)
-    elif "restore" == config.command or "verify" in config.command:
+    elif config.command in ["restore", "verify"]:
         duplicityDest, duplicitySource = duplicitySource, duplicityDest
         duplicity_args.append(config.command)
-    elif any(
-        [
-            x in config.command
-            for x in ["collection-status", "remove", "cleanup", "list-current-files"]
-        ]
-    ):
+    elif config.command in ["collection-status", "remove", "cleanup", "list-current-files"]:
         skip_source = True
         duplicity_args.append(config.command)
     else:
@@ -442,38 +518,73 @@ for item in config.directories:
     if not skip_dest:
         duplicity_args.append(duplicityDest)
 
-    prettyArgs = " ".join(duplicity_args)
-    out = f"Running: duplicity --encrypt-key {config.gpg.fingerprint} {prettyArgs}\n"
-    logging.info(out)
+    cmd = ["duplicity", f"--encrypt-key", f"{config.gpg.fingerprint}"]
+    cmd.extend(duplicity_args)
+    prettyArgs = " ".join(cmd)
+    logging.info(f"Running: {prettyArgs}")
 
-    try:
-        duplicity_sh = duplicity.bake(encrypt_key=config.gpg.fingerprint)
-        for line in duplicity_sh(duplicity_args, _iter=True):
-            rr.add_json(line)
-            logging.info(line.strip())
+    # Keep only the last 100 lines in memory
+    recent_logs = collections.deque(maxlen=100)
+
+    with subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=128 * 1024 # 128KB buffer for high-speed I/O
+    ) as proc:
+        for line in proc.stdout: # type: ignore
+            # 1. Send to your terminal's stdout immediately
+            sys.stdout.write(line) 
+            
+            # 2. Process for your JSON logic
+            clean_line = line.strip()
+            if clean_line:
+                rr.add_json(clean_line)
+            recent_logs.append(clean_line) 
+        proc.wait()
+
         if config.keep_n_full > 0 and config.command in ["inc", "backup", "full"]:
-            cleanup_out = duplicity_sh(
-                [
-                    "remove-all-but-n-full",
-                    str(config.keep_n_full),
-                    "--force",
-                    duplicityDest,
-                ]
-            )
-            if not "No old backup sets found, nothing deleted" in cleanup_out:
+            params =  [      
+                "duplicity",              
+                "remove-all-but-n-full",
+                str(config.keep_n_full),
+                "--force",
+                duplicityDest,
+            ]
+            cleanup_out = f"No output from: {params}"
+            with subprocess.Popen(
+                    params,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                ) as proc:
+                cleanup_out, _ = proc.communicate()
+
+            if proc.returncode != 0:
+                logging.error(f"Clean up process failed with code {proc.returncode}\nRecent logs:\n" + "\n".join(cleanup_out))
+                rr.add_error(
+                    f"""CLEANUP ERROR exitcode: {proc.returncode}
+                             ============== 
+                             {cleanup_out}
+                             ============== """
+                )
+            elif not "No old backup sets found, nothing deleted" in cleanup_out:
                 cleanup_out = textwrap.indent(cleanup_out, "." * 9 + " ")
                 msg = f"Clean up: {duplicityDest}\n{cleanup_out}"
                 logging.info(msg)
                 rr.add_footer(msg)
 
-    except sh.ErrorReturnCode as sh_err:
+
+    if proc.returncode != 0:
+        logging.error(f"Process failed with code {proc.returncode}\nRecent logs:\n" + "\n".join(recent_logs))
         rr.add_error(
-            f"""ERROR exitcode: {sh_err.exit_code}
+            f"""ERROR exitcode: {proc.returncode}
                      ============== 
-                     {sh_err.stderr.decode()}
+                     {recent_logs}
                      ============== """
         )
         rr.parse_and_send()
-        print(f"ERROR exitcode: {sh_err.stderr.decode()}")
-        raise sh_err
+        raise subprocess.CalledProcessError(proc.returncode, cmd)
+
 rr.parse_and_send()
