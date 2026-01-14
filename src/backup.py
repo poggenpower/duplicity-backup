@@ -166,7 +166,7 @@ class ConfigParser:
             default=["local-storage"],
             help="List of storage class names to consider for k8s local-storage discovery. Default: ['local-storage']",
         )
-            
+
         parser.add_argument(
             "--no-default-config",
             action="store_true",
@@ -222,7 +222,7 @@ class ConfigParser:
                 "--list-keys",
                 "--with-colons",
                 "--with-fingerprint",
-                self._cfg_d.gpg.fingerprint
+                self._cfg_d.gpg.fingerprint,
             ]
 
             try:
@@ -379,10 +379,15 @@ class ConfigParser:
                 self._cfg_d.update(subdirs, "directories")
         elif self._cfg_d.k8s_local_storage_discovery.enabled and node is not None:
             from k8s_local_storage_discovery import K8sLocalStorageDiscovery
-            local_storage = K8sLocalStorageDiscovery(self._cfg_d.k8s_local_storage_discovery.storage_class_names)
+
+            local_storage = K8sLocalStorageDiscovery(
+                self._cfg_d.k8s_local_storage_discovery.storage_class_names
+            )
 
             directories = local_storage.get_local_storage_dirs_for_node(node)
-            source, directories = local_storage.discover_common_path(directories, self._cfg_d.source.baseDir)
+            source, directories = local_storage.discover_common_path(
+                directories, self._cfg_d.source.baseDir
+            )
             if len(directories) > 0:
                 if self._cfg_d.source.baseDir == "":
                     self._cfg_d.source.baseDir = source
@@ -425,17 +430,12 @@ def get_no_of_increments(duplicityDest):
             "0",
             "--jsonstat",
         ]
-        
+
         # Execute and capture output
-        result = subprocess.run(
-            cmd, 
-            capture_output=True, 
-            text=True, 
-            check=True
-        )
-        
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+
         dup_out = result.stdout
-        
+
         # Your existing parsing logic
         match = pattern.findall(dup_out)
         if match:
