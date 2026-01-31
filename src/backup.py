@@ -621,5 +621,5 @@ for item in config.directories:
         raise subprocess.CalledProcessError(proc.returncode, cmd)
 
 rr.parse_and_send()
-logging.info(f"Summary of all backup runs: {rr.cached_results}")
+logging.info(f"Summary of all backup runs: {json.dumps(rr.cached_results, indent=2)}")
 logging.info("Backup process completed successfully.")
