@@ -24,11 +24,11 @@ class BackupStat:
 
 class Sender(ABC):
     @abstractmethod
-    def send(self, report_list: list[BackupStat], *args, **kwargs) -> bool:
+    def send(self, report_list: list[BackupStat], *args, **kwargs):
         """
         Send must be implemented to trigger forwaring.
         """
-        return False
+        pass
 
     @classmethod
     def get_params(cls) -> Callable:  # type: ignore
@@ -43,8 +43,8 @@ class DummySender(Sender):
     NoOp Sender to "disbale" sending
     """
 
-    def send(self, report_list: list[BackupStat], *args, **kwargs) -> bool:
-        return False
+    def send(self, report_list: list[BackupStat], *args, **kwargs):
+        pass
 
     def get_params(cls) -> Callable:  # type: ignore
         @dataclass()
@@ -156,6 +156,7 @@ class ResultReader:
         self.footer = ""
         self.stats: list[BackupStat] = []
         self.sender: Sender = sender
+        self.cached_results: list[dict] = []
 
     def add_json(self, input: str):
         """
@@ -192,6 +193,7 @@ class ResultReader:
         no_delta = 0
         for result_str in json_blobs:
             result = json.loads(result_str)
+            self.cached_results.append(result)
             elapsed_time = result.get("ElapsedTime", -1)
             bs = BackupStat(
                 result["backup_meta"].get("source", "Error no source"),

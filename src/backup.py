@@ -23,6 +23,15 @@ logFormatter = logging.Formatter(
     "%(asctime)s [%(filename)s:%(lineno)s - %(funcName)20s() ] [%(levelname)-5.5s]  %(message)s"
 )
 
+class ConsoleExcludeFileOnly(logging.Filter):
+    """
+    Filter to exclude log records with 'file_only' attribute set to True
+    from being logged to the console.
+    """
+    def filter(self, record):
+        return not getattr(record, "file_only", False)
+
+
 consoleHandler = logging.StreamHandler()
 consoleHandler.setFormatter(logFormatter)
 # logging.getLogger().addHandler(consoleHandler)
@@ -191,6 +200,13 @@ class ConfigParser:
             "--log-level",
             required=False,
             help="Set loglevel NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL",
+        )
+        parser.add_argument(
+            "--logfile",
+            type=str,
+            required=False,
+            default="",
+            help="File to write logs to. Rotated every 7 days; keep 5 backup files.",
         )
         self.parser = parser
 
@@ -484,6 +500,20 @@ except ConfigurationIssue as ci:
 if config.log_level:
     logging.getLogger().setLevel(config.log_level)
 
+# additional file logging if requested
+if getattr(config, "logfile", None):
+    try:
+        fileHandler = logging.handlers.TimedRotatingFileHandler(
+            config.logfile, when="D", interval=7, backupCount=5, encoding="utf-8"
+        )
+        fileHandler.setFormatter(logFormatter)
+        # ensure the file handler respects the configured log level
+        fileHandler.setLevel(logging.getLogger().level)
+        logging.getLogger().addHandler(fileHandler)
+        logging.info(f"Logging to file {config.logfile} (rotated every 7 days, keep 5 files)")
+    except Exception as e:
+        logging.error(f"Cannot open logfile {config.logfile}: {e}")
+
 for item in config.directories:
     force_full = False
     duplicitySource = os.path.join(config.source.baseDir, item)
@@ -545,6 +575,7 @@ for item in config.directories:
                 rr.add_json(clean_line)
             recent_logs.append(clean_line) 
         proc.wait()
+        logging.info(f"Last logs:\n" + "\n".join(recent_logs), extra={"file_only": True})
 
         if config.keep_n_full > 0 and config.command in ["inc", "backup", "full"]:
             params =  [      
@@ -590,3 +621,5 @@ for item in config.directories:
         raise subprocess.CalledProcessError(proc.returncode, cmd)
 
 rr.parse_and_send()
+logging.info(f"Summary of all backup runs: {rr.cached_results}")
+logging.info("Backup process completed successfully.")

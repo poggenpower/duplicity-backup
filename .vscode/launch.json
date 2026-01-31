@@ -58,6 +58,8 @@
             "args": [
                 "--config",
                 "/workspaces/duplicity-backup/test/backup.yaml",
+                "--logfile",
+                "/tmp/duplicity-debug.log",
                 "--command",
                 "backup",
                 // "./tmp/conf.yaml",
