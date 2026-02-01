@@ -18,7 +18,7 @@ import logging
 import logging.handlers
 
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 logFormatter = logging.Formatter(
     "%(asctime)s [%(filename)s:%(lineno)s - %(funcName)20s() ] [%(levelname)-5.5s]  %(message)s"
