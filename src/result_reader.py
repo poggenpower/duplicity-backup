@@ -57,7 +57,7 @@ class DummySender(Sender):
 class EmailSender(Sender):
     @dataclass
     class EmailParameter:
-        server: str = "localhost"
+        server: str | None = None
         port: int = 587
         sender: str = "jane.doe@example.com"
         recipient: str = "jon.doe@example.com"

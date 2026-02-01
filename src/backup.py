@@ -12,6 +12,7 @@ import textwrap
 import regex as re
 
 from result_reader import ResultReader, EmailSender, DummySender
+from time_tracker import TimeTracker
 
 import logging
 import logging.handlers
@@ -514,7 +515,11 @@ if getattr(config, "logfile", None):
     except Exception as e:
         logging.error(f"Cannot open logfile {config.logfile}: {e}")
 
+tracker = TimeTracker()
+
+tracker.start("total_backup_process")
 for item in config.directories:
+    tracker.start(f"per_item", identifier=item)
     force_full = False
     duplicitySource = os.path.join(config.source.baseDir, item)
     duplicityDest = f"{config.dest.uri}{os.path.join(config.dest.baseDir, item)}"
@@ -558,6 +563,7 @@ for item in config.directories:
     # Keep only the last 100 lines in memory
     recent_logs = collections.deque(maxlen=100)
 
+    tracker.start("duplicity_process", identifier=item)
     with subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
@@ -607,7 +613,7 @@ for item in config.directories:
                 msg = f"Clean up: {duplicityDest}\n{cleanup_out}"
                 logging.info(msg)
                 rr.add_footer(msg)
-
+    tracker.stop("duplicity_process")
 
     if proc.returncode != 0:
         logging.error(f"Process failed with code {proc.returncode}\nRecent logs:\n" + "\n".join(recent_logs))
@@ -619,7 +625,10 @@ for item in config.directories:
         )
         rr.parse_and_send()
         raise subprocess.CalledProcessError(proc.returncode, cmd)
+    tracker.stop("per_item")
+tracker.stop("total_backup_process")
 
 rr.parse_and_send()
 logging.info(f"Summary of all backup runs: {json.dumps(rr.cached_results, indent=2)}")
+logging.info(f"Time tracking report: {json.dumps(tracker.report(), indent=2)}")
 logging.info("Backup process completed successfully.")

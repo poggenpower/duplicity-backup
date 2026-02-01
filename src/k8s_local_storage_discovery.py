@@ -253,8 +253,8 @@ class K8sLocalStorageDiscovery:
 
 if __name__ == "__main__":
     # Example usage
-    k8s_discovery = K8sLocalStorageDiscovery(storage_class_names=["local-storage", "local-storage-auto"])
-    node_name = "k8s-node01e"  # Replace with your actual node name
+    k8s_discovery = K8sLocalStorageDiscovery(storage_class_names=[ "local-storage-auto" , "local-storage", "local-path" ])
+    node_name = "k3s01"  # Replace with your actual node name
     dirs = k8s_discovery.get_local_storage_dirs_for_node(node_name)
     print(f"Directories for node {node_name}: {dirs}")
     node = k8s_discovery.get_node_by_pvc("claim0")
