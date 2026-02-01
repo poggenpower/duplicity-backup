@@ -24,11 +24,11 @@ class BackupStat:
 
 class Sender(ABC):
     @abstractmethod
-    def send(self, report_list: list[BackupStat], *args, **kwargs) -> bool:
+    def send(self, report_list: list[BackupStat], *args, **kwargs):
         """
         Send must be implemented to trigger forwaring.
         """
-        return False
+        pass
 
     @classmethod
     def get_params(cls) -> Callable:  # type: ignore
@@ -43,8 +43,8 @@ class DummySender(Sender):
     NoOp Sender to "disbale" sending
     """
 
-    def send(self, report_list: list[BackupStat], *args, **kwargs) -> bool:
-        return False
+    def send(self, report_list: list[BackupStat], *args, **kwargs):
+        pass
 
     def get_params(cls) -> Callable:  # type: ignore
         @dataclass()
@@ -57,7 +57,7 @@ class DummySender(Sender):
 class EmailSender(Sender):
     @dataclass
     class EmailParameter:
-        server: str = "localhost"
+        server: str | None = None
         port: int = 587
         sender: str = "jane.doe@example.com"
         recipient: str = "jon.doe@example.com"
@@ -65,7 +65,7 @@ class EmailSender(Sender):
         password: str | None = None
 
     def __init__(self, email_param: EmailParameter) -> None:
-        self.server: str = email_param.server
+        self.server: str | None = email_param.server
         self.port: int = email_param.port
         self.sender = email_param.sender
         self.recipient = email_param.recipient
@@ -119,6 +119,8 @@ class EmailSender(Sender):
         error="",
         footer="",
     ):
+        if not self.server:
+            raise ValueError("Email server not configured.")
         text = self._rendert_text(
             report_list, f"{status} - {header}", info=info, error=error, footer=footer
         )
@@ -156,6 +158,7 @@ class ResultReader:
         self.footer = ""
         self.stats: list[BackupStat] = []
         self.sender: Sender = sender
+        self.cached_results: list[dict] = []
 
     def add_json(self, input: str):
         """
@@ -192,6 +195,7 @@ class ResultReader:
         no_delta = 0
         for result_str in json_blobs:
             result = json.loads(result_str)
+            self.cached_results.append(result)
             elapsed_time = result.get("ElapsedTime", -1)
             bs = BackupStat(
                 result["backup_meta"].get("source", "Error no source"),

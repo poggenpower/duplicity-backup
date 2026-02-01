@@ -79,6 +79,8 @@ jobs:
           format: 'table'
           severity: 'CRITICAL,HIGH'
           exit-code: '1'  
+          # ignore vulnerabilities in setuptools _vendor directory
+          skip-dirs: '/usr/local/lib/python3.12/site-packages/setuptools/_vendor'
 
       - name: Push Docker image to registry
         run: |
