@@ -629,6 +629,11 @@ for item in config.directories:
 tracker.stop("total_backup_process")
 
 rr.parse_and_send()
-logging.info(f"Summary of all backup runs: {json.dumps(rr.cached_results, indent=2)}")
-logging.info(f"Time tracking report: {json.dumps(tracker.report(), indent=2)}")
+try:
+    logging.info(f"Summary of all backup runs: {json.dumps(rr.cached_results, indent=2)}")
+    logging.info(f"Time tracking report: {json.dumps(tracker.report(), indent=2)}")
+except json.decoder.JSONDecodeError:
+    logging.exception("Can't serialize summary or time tracking report to JSON.")
+    logging.error("Raw summary of all backup runs: " + str(rr.cached_results))
+    logging.error("Raw time tracking report: " + str(tracker.report()))
 logging.info("Backup process completed successfully.")
