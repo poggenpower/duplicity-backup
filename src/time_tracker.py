@@ -1,3 +1,4 @@
+import logging
 import time
 
 class TimeTracker:
@@ -25,6 +26,7 @@ class TimeTracker:
             self._records[name] = []
         
         self._records[name].append({"duration": elapsed, "id": identifier, "is_running": False})
+        logging.info(f"Timer '{name}:{identifier}' stopped. Elapsed time: {elapsed:.2f} seconds.")
         return elapsed
 
     def report(self) -> dict:

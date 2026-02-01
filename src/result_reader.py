@@ -65,7 +65,7 @@ class EmailSender(Sender):
         password: str | None = None
 
     def __init__(self, email_param: EmailParameter) -> None:
-        self.server: str = email_param.server
+        self.server: str | None = email_param.server
         self.port: int = email_param.port
         self.sender = email_param.sender
         self.recipient = email_param.recipient
@@ -119,6 +119,8 @@ class EmailSender(Sender):
         error="",
         footer="",
     ):
+        if not self.server:
+            raise ValueError("Email server not configured.")
         text = self._rendert_text(
             report_list, f"{status} - {header}", info=info, error=error, footer=footer
         )
