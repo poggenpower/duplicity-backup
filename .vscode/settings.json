@@ -2,5 +2,8 @@
     "editor.defaultFormatter": "ms-python.black-formatter",
     "[jsonc]": {
         "editor.defaultFormatter": "vscode.json-language-features"
+    },
+    "[json]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
     }
 }

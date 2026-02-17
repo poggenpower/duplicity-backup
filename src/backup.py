@@ -434,8 +434,8 @@ class ConfigParser:
 
 
 def get_no_of_increments(duplicityDest):
-    pattern = re.compile(r"\{(?:[^{}]|(?R))*\}")
-    inc_count = 0
+    pattern = re.compile(r'"no_of_inc":\s*(\d+)')
+    inc_count = -1
     dup_out = "No output"
     try:
         # Build the command list
@@ -449,18 +449,21 @@ def get_no_of_increments(duplicityDest):
         ]
 
         # Execute and capture output
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-
-        dup_out = result.stdout
-
-        # Your existing parsing logic
-        match = pattern.findall(dup_out)
-        if match:
-            dub_jsons = match[0]
-            dub_json = json.loads(dub_jsons)
-            index_stat = dub_json.popitem()[1]
-            inc_count = index_stat["json_stat"]["backup_meta"]["no_of_inc"]
-            
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True, bufsize=1)
+        if process.stdout is None:
+            raise RuntimeError("Failed to capture output from duplicity process.")
+        try:
+            for line in process.stdout:
+                match = pattern.search(line)
+                if match:
+                    inc_count = int(match.group(1))
+                    break  # Found it! Exit the loop immediately
+        finally:
+            # Always clean up the process
+            process.stdout.read()
+            process.stdout.close()
+            process.terminate()
+            process.wait()    
     except subprocess.CalledProcessError as e:
         logging.exception(
             f"Duplicity command failed. Exit code: {e.returncode}. "
@@ -468,7 +471,7 @@ def get_no_of_increments(duplicityDest):
         )
     except Exception as e:
         logging.exception(
-            f"Can't get backup jsons statistics. Error: {e} at {duplicityDest}. Output: {dup_out}"
+            f"Can't get backup jsons statistics. Error: {e} at {duplicityDest}."
         )
         
     time.sleep(0.5)
