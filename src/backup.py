@@ -580,9 +580,8 @@ for item in config.directories:
             
             # 2. Process for your JSON logic
             clean_line = line.strip()
-            if clean_line:
-                rr.add_json(clean_line)
             recent_logs.append(clean_line) 
+        rr.add_json("\n".join(recent_logs))  # Add any remaining logs to the JSON input
         proc.wait()
         logging.info(f"Last logs:\n" + "\n".join(recent_logs), extra={"file_only": True})
 
