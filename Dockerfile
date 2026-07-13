@@ -2,7 +2,7 @@
 # This container is for building the duplicity wheel and other dependencies
 # It will be discarded after the build process.
 
-FROM docker.io/python:3.12-alpine AS build
+FROM docker.io/python:3.13-alpine AS build
 
 # Install build dependencies
 RUN apk fix && \
@@ -12,6 +12,7 @@ RUN apk fix && \
         gpg \
         gpg-agent \
         librsync \
+        rsync \
         gettext \
         build-base \
         linux-headers \
