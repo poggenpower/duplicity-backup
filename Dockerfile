@@ -45,7 +45,7 @@ RUN pip wheel --wheel-dir=/opt/wheels -r /opt/duplicity-basic-requirements.txt -
     pip wheel --wheel-dir=/opt/wheels urllib3
 # Stage 2: The Final Production Stage
 
-FROM docker.io/python:3.12-alpine
+FROM docker.io/python:3.13-alpine
 
 # Copy the wheels from the build container
 COPY --from=build /opt/wheels /tmp/wheels/
