@@ -12,7 +12,6 @@ RUN apk fix && \
         gpg \
         gpg-agent \
         librsync \
-        rsync \
         gettext \
         build-base \
         linux-headers \
@@ -58,6 +57,7 @@ RUN apk fix && \
         gpg \
         gpg-agent \
         librsync \
+        rsync \
         gettext
 
     # Install Python packages from the pre-built wheels
