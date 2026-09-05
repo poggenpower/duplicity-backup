@@ -27,7 +27,7 @@ RUN pip install setuptools_scm python-gettext && \
 	# We build duplicity from source to have more control over the version and dependencies.
 	# avoid installing dependencies used for exotic backends only. 
 	# CFLAGS is used to suppress a warning during the build process of duplicity
-    CFLAGS="-Wno-int-conversion" pip wheel --wheel-dir=/opt/wheels git+https://gitlab.com/duplicity/duplicity.git@issue943 --no-deps && \
+    CFLAGS="-Wno-int-conversion" pip wheel --wheel-dir=/opt/wheels git+https://gitlab.com/duplicity/duplicity.git@3ec2561b374a03ee3f9a947ff2444c04e0b978cb --no-deps && \
     wget "https://gitlab.com/duplicity/duplicity/-/raw/rel.3.2.0.2/requirements.txt?ref_type=tags&inline=false" -O /opt/duplicity-requirements.txt && \
 	sed -n '/##### basic requirements #####/,/##### backend libraries #####/p' /opt/duplicity-requirements.txt > /opt/duplicity-basic-requirements.txt && \
 	# # add backend dependencies here
